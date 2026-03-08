@@ -117,6 +117,26 @@ install_plugin() {
     ok "Plugin installed to $dest"
 }
 
+install_skill() {
+    local oc_skills
+    # Find OpenClaw skills directory
+    for dir in "$HOME/.npm-global/lib/node_modules/openclaw/skills" "/usr/local/lib/node_modules/openclaw/skills" "/usr/lib/node_modules/openclaw/skills"; do
+        if [[ -d "$dir" ]]; then
+            oc_skills="$dir"
+            break
+        fi
+    done
+
+    if [[ -z "$oc_skills" ]]; then
+        info "OpenClaw skills directory not found. Manually copy skill/SKILL.md to your OpenClaw skills dir."
+        return
+    fi
+
+    mkdir -p "$oc_skills/swat"
+    cp "$EXTRACT_DIR/skill/SKILL.md" "$oc_skills/swat/"
+    ok "Skill installed to $oc_skills/swat/"
+}
+
 install_blueprints() {
     local bp="$SWAT_HOME/blueprints"
     mkdir -p "$bp/squads/_framework" "$bp/skills" "$bp/mcps"
@@ -168,6 +188,7 @@ main() {
     fetch_release
     install_binary
     install_plugin
+    install_skill
     install_blueprints
     setup_runtime
     post_install
