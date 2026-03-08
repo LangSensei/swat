@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -34,16 +34,14 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: |
-          go build -o swat .
+        run: go build -o swat .
 
-      - name: Package release
+      - name: Package tarball
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           PLATFORM="${{ matrix.goos }}-${{ matrix.goarch }}"
           TARBALL="swat-${TAG}-${PLATFORM}.tar.gz"
 
-          # Stage files
           mkdir -p staging/plugin staging/blueprints/_framework
 
           cp swat staging/
@@ -51,14 +49,25 @@ jobs:
           cp blueprints/OPERATION.md staging/blueprints/
           cp blueprints/_framework/* staging/blueprints/_framework/
 
-          # Create tarball
           cd staging
           tar -czf "../${TARBALL}" .
-          cd ..
 
-          echo "TARBALL=${TARBALL}" >> "$GITHUB_ENV"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: swat-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: swat-*.tar.gz
 
-      - name: Upload release asset
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.TARBALL }}
+          files: swat-*.tar.gz
