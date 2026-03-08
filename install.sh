@@ -163,6 +163,57 @@ setup_runtime() {
 
 # --- Post-Install ---
 
+register_plugin() {
+    local oc_config="$HOME/.openclaw/openclaw.json"
+    local plugin_path="$SWAT_HOME/plugin"
+
+    if [[ ! -f "$oc_config" ]]; then
+        info "OpenClaw config not found at $oc_config"
+        info "After installing OpenClaw, add the SWAT plugin to your config:"
+        echo ""
+        echo "  plugins.load.paths: [\"$plugin_path\"]"
+        echo "  plugins.entries.swat-mcp-bridge.enabled: true"
+        echo ""
+        info "Then restart OpenClaw: openclaw gateway restart"
+        return
+    fi
+
+    # Check if already registered
+    if grep -q "$plugin_path" "$oc_config" 2>/dev/null; then
+        ok "Plugin already registered in OpenClaw config"
+        return
+    fi
+
+    # Use node to patch JSON config
+    if node -e "
+        const fs = require('fs');
+        const cfg = JSON.parse(fs.readFileSync('$oc_config', 'utf8'));
+
+        // Ensure plugins structure
+        cfg.plugins = cfg.plugins || {};
+        cfg.plugins.load = cfg.plugins.load || {};
+        cfg.plugins.load.paths = cfg.plugins.load.paths || [];
+        cfg.plugins.entries = cfg.plugins.entries || {};
+
+        // Add plugin path if not present
+        if (!cfg.plugins.load.paths.includes('$plugin_path')) {
+            cfg.plugins.load.paths.push('$plugin_path');
+        }
+
+        // Enable plugin
+        cfg.plugins.entries['swat-mcp-bridge'] = { enabled: true };
+
+        fs.writeFileSync('$oc_config', JSON.stringify(cfg, null, 2) + '\n');
+    " 2>/dev/null; then
+        ok "Plugin registered in OpenClaw config"
+        info "Restart OpenClaw to activate: openclaw gateway restart"
+    else
+        err "Failed to auto-register plugin. Manually add to $oc_config:"
+        echo "  plugins.load.paths: [\"$plugin_path\"]"
+        echo "  plugins.entries.swat-mcp-bridge.enabled: true"
+    fi
+}
+
 post_install() {
     # PATH check
     if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
@@ -171,11 +222,7 @@ post_install() {
         echo ""
     fi
 
-    # OpenClaw plugin registration
-    info "Register the SWAT plugin in your OpenClaw config:"
-    echo "  \"plugins\": [\"$SWAT_HOME/plugin\"]"
-    echo ""
-    info "Then restart OpenClaw: openclaw gateway restart"
+    register_plugin
 }
 
 # --- Cleanup ---
