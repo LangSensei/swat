@@ -68,6 +68,29 @@ const TOOLS = [
       squad: Type.Optional(Type.String({ description: "Target squad" })),
     }),
   },
+  {
+    name: "swat_browse",
+    label: "SWAT Browse",
+    description: "List all squads available in the marketplace",
+    parameters: Type.Object({}),
+  },
+  {
+    name: "swat_install",
+    label: "SWAT Install",
+    description: "Install a squad from the marketplace",
+    parameters: Type.Object({
+      squad: Type.String({ description: "Squad name to install" }),
+    }),
+  },
+  {
+    name: "swat_uninstall",
+    label: "SWAT Uninstall",
+    description: "Uninstall a squad and clean up orphaned dependencies",
+    parameters: Type.Object({
+      squad: Type.String({ description: "Squad name to uninstall" }),
+      purge: Type.Optional(Type.Boolean({ description: "Also delete runtime data (default: false)" })),
+    }),
+  },
 ];
 
 async function ensureConnected(logger: any): Promise<Client> {
