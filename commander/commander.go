@@ -47,7 +47,6 @@ type Commander struct {
 	Iteration      int
 	RecentFailures int
 	RetryCount     map[string]int
-	MaxConcurrent  int
 }
 
 // New creates a new Commander instance
@@ -57,9 +56,8 @@ func New(swatRoot string) *Commander {
 		swatRoot = filepath.Join(home, swatRoot[2:])
 	}
 	return &Commander{
-		SwatRoot:      swatRoot,
-		RetryCount:    make(map[string]int),
-		MaxConcurrent: 4,
+		SwatRoot:   swatRoot,
+		RetryCount: make(map[string]int),
 	}
 }
 
@@ -258,4 +256,45 @@ func parseOperationMD(content string) (*Operation, error) {
 		return nil, fmt.Errorf("missing operation_id in frontmatter")
 	}
 	return op, nil
+}
+
+// findOperation locates an operation by ID across all squads
+func (c *Commander) findOperation(opID string) (*Operation, error) {
+	ops, err := c.ListOperations()
+	if err != nil {
+		return nil, err
+	}
+	for _, op := range ops {
+		if op.OperationID == opID {
+			return op, nil
+		}
+	}
+	return nil, fmt.Errorf("operation %s not found", opID)
+}
+
+// ListSquads returns all installed squad blueprints
+func (c *Commander) ListSquads() ([]map[string]string, error) {
+	bpDir := filepath.Join(c.SwatRoot, "blueprints")
+	entries, err := os.ReadDir(filepath.Join(bpDir, "squads"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var squads []map[string]string
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "_framework" {
+			continue
+		}
+		info := map[string]string{"name": entry.Name()}
+		manifestPath := filepath.Join(bpDir, "squads", entry.Name(), "MANIFEST.md")
+		if data, err := os.ReadFile(manifestPath); err == nil {
+			if desc := extractFrontmatterField(string(data), "description"); desc != "" {
+				info["description"] = desc
+			}
+		}
+		squads = append(squads, info)
+	}
+	return squads, nil
 }
