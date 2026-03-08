@@ -1,5 +1,5 @@
 {
-  "name": "@swat/openclaw-plugin",
+  "name": "swat-mcp-bridge",
   "version": "2.0.0",
   "description": "OpenClaw bridge plugin for SWAT Commander MCP server",
   "main": "index.ts",
