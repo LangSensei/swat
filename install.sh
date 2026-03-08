@@ -5,7 +5,6 @@ set -euo pipefail
 # Usage: curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.sh | bash
 
 REPO="https://github.com/LangSensei/swat-v2.git"
-MARKETPLACE="https://github.com/LangSensei/swat-marketplace.git"
 SWAT_HOME="$HOME/.swat"
 INSTALL_DIR="$SWAT_HOME/core"
 BIN_DIR="$HOME/.local/bin"
@@ -74,31 +73,16 @@ install_plugin() {
 
 setup_blueprints() {
     local bp="$SWAT_HOME/blueprints"
-    mkdir -p "$bp/squads/_framework"
+    mkdir -p "$bp/squads/_framework" "$bp/skills" "$bp/mcps"
 
     # Core framework files (from swat-v2 repo)
     info "Installing framework blueprints..."
     cp "$INSTALL_DIR/blueprints/OPERATION.md" "$bp/"
     cp "$INSTALL_DIR/blueprints/_framework/"* "$bp/squads/_framework/"
 
-    # Marketplace content (squads, skills, mcps)
-    local mp_tmp="$SWAT_HOME/.marketplace-tmp"
-    if [[ -d "$mp_tmp/.git" ]]; then
-        git -C "$mp_tmp" pull --quiet
-    else
-        info "Fetching marketplace blueprints..."
-        git clone --quiet "$MARKETPLACE" "$mp_tmp"
-    fi
-
-    # Copy marketplace content into blueprints
-    for dir in squads skills mcps; do
-        if [[ -d "$mp_tmp/$dir" ]]; then
-            mkdir -p "$bp/$dir"
-            cp -r "$mp_tmp/$dir/"* "$bp/$dir/" 2>/dev/null || true
-        fi
-    done
-
     ok "Blueprints installed"
+    info "Install squads/skills/mcps from the marketplace:"
+    echo "  https://github.com/LangSensei/swat-marketplace"
 }
 
 # --- Set Up Runtime Directory ---
