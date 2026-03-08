@@ -88,5 +88,36 @@ func (s *Server) Tools() []ToolDef {
 				"required": []string{"brief", "cron"},
 			},
 		},
+		{
+			Name:        "swat_install",
+			Description: "Install a squad from the SWAT marketplace (auto-resolves skill and MCP dependencies)",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"squad": map[string]interface{}{"type": "string", "description": "Squad name to install"},
+				},
+				"required": []string{"squad"},
+			},
+		},
+		{
+			Name:        "swat_uninstall",
+			Description: "Uninstall a squad and clean up orphaned dependencies",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"squad": map[string]interface{}{"type": "string", "description": "Squad name to uninstall"},
+					"purge": map[string]interface{}{"type": "boolean", "description": "Also delete runtime data and operation history (default: false)"},
+				},
+				"required": []string{"squad"},
+			},
+		},
+		{
+			Name:        "swat_browse",
+			Description: "List all squads available in the marketplace with install status",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
 	}
 }

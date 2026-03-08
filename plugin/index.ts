@@ -4,6 +4,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { Type } from "@sinclair/typebox";
 import { spawn } from "child_process";
 import { resolve } from "path";
+import { homedir } from "os";
 
 let client: Client | null = null;
 let transport: StdioClientTransport | null = null;
@@ -15,7 +16,7 @@ function json(data: unknown) {
   };
 }
 
-const SWAT_BINARY = resolve(__dirname, "..", "swat");
+const SWAT_BINARY = resolve(homedir(), ".local", "bin", "swat");
 
 const TOOLS = [
   {

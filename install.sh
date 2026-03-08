@@ -254,6 +254,12 @@ main() {
 
     # Record installed version
     echo "$TAG" > "$SWAT_HOME/.version"
+
+    echo ""
+    info "Next steps:"
+    echo "  1. Restart OpenClaw:  openclaw gateway restart"
+    echo "  2. Install a squad:   Tell your agent: \"browse SWAT marketplace and install a squad\""
+    echo "     Or use the tool directly: swat_browse → swat_install"
     echo ""
 }
 

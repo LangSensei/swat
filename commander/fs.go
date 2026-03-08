@@ -2,6 +2,7 @@ package commander
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -10,6 +11,12 @@ import (
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// dirExists checks if a path exists and is a directory
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // fileContains checks if a file contains a substring
@@ -38,4 +45,9 @@ func copyDir(src, dst string) error {
 		}
 		return os.WriteFile(target, data, 0644)
 	})
+}
+
+// execCommand creates an exec.Cmd
+func execCommand(name string, args ...string) *exec.Cmd {
+	return exec.Command(name, args...)
 }
