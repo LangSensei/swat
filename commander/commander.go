@@ -1,43 +1,44 @@
 package commander
 
 import (
-	"encoding/json"
+	"bufio"
+	"crypto/rand"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-// Operation represents a task's metadata (operation.json)
+// Operation represents a task parsed from OPERATION.md frontmatter
 type Operation struct {
 	OperationID   string     `json:"operation_id"`
+	Squad         string     `json:"squad"`
 	Brief         string     `json:"brief"`
 	Details       string     `json:"details,omitempty"`
-	Squad         string     `json:"squad,omitempty"`
-	SquadVersion  string     `json:"squad_version,omitempty"`
 	Status        string     `json:"status"`
 	PID           int        `json:"pid,omitempty"`
-	Source        string     `json:"source"`
-	SchedulerID   *string    `json:"scheduler_id,omitempty"`
-	RetryCount    int        `json:"retry_count"`
 	Notified      bool       `json:"notified"`
+	RetryCount    int        `json:"retry_count"`
+	Source        string     `json:"source"`
 	CreatedAt     time.Time  `json:"created_at"`
 	DispatchedAt  *time.Time `json:"dispatched_at,omitempty"`
 	CompletedAt   *time.Time `json:"completed_at,omitempty"`
 	FailedAt      *time.Time `json:"failed_at,omitempty"`
 	FailureReason *string    `json:"failure_reason,omitempty"`
+	Summary       string     `json:"summary,omitempty"`
 }
 
 // Schedule represents a recurring task definition
 type Schedule struct {
-	ID        string    `json:"id"`
-	Brief     string    `json:"brief"`
-	Details   string    `json:"details,omitempty"`
-	Squad     string    `json:"squad,omitempty"`
-	Cron      string    `json:"cron"`
-	NextRun   time.Time `json:"next_run"`
-	Enabled   bool      `json:"enabled"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        string
+	Brief     string
+	Details   string
+	Squad     string
+	Cron      string
+	NextRun   time.Time
+	Enabled   bool
+	CreatedAt time.Time
 }
 
 // Commander is the core orchestrator
@@ -46,67 +47,68 @@ type Commander struct {
 	Iteration      int
 	RecentFailures int
 	RetryCount     map[string]int
+	MaxConcurrent  int
 }
 
 // New creates a new Commander instance
 func New(swatRoot string) *Commander {
-	// Expand ~ to home dir
-	if swatRoot[:2] == "~/" {
+	if len(swatRoot) >= 2 && swatRoot[:2] == "~/" {
 		home, _ := os.UserHomeDir()
 		swatRoot = filepath.Join(home, swatRoot[2:])
 	}
 	return &Commander{
-		SwatRoot:   swatRoot,
-		RetryCount: make(map[string]int),
+		SwatRoot:      swatRoot,
+		RetryCount:    make(map[string]int),
+		MaxConcurrent: 4,
 	}
 }
 
-// GenerateOpID creates a unique operation ID
+// GenerateOpID creates a unique operation ID (date-8hex)
 func GenerateOpID() string {
-	return fmt.Sprintf("%s-%04x", time.Now().UTC().Format("20060102"), time.Now().UnixNano()%0xFFFF)
+	b := make([]byte, 4)
+	rand.Read(b)
+	return fmt.Sprintf("%s-%08x", time.Now().UTC().Format("20060102"), b)
 }
 
-// OperationsDir returns the path to operations/
-func (c *Commander) OperationsDir() string {
-	return filepath.Join(c.SwatRoot, "operations")
+// SquadDir returns the path to a squad's runtime directory
+func (c *Commander) SquadDir(squad string) string {
+	return filepath.Join(c.SwatRoot, "squads", squad)
 }
 
-// OperationDir returns the path to a specific operation
-func (c *Commander) OperationDir(opID string) string {
-	return filepath.Join(c.OperationsDir(), opID)
+// OperationDir returns the path to a specific operation within its squad
+func (c *Commander) OperationDir(squad, opID string) string {
+	return filepath.Join(c.SquadDir(squad), "operations", opID)
 }
 
-// SaveOperation writes operation.json
+// OperationMDPath returns the path to OPERATION.md for an operation
+func (c *Commander) OperationMDPath(squad, opID string) string {
+	return filepath.Join(c.OperationDir(squad, opID), "OPERATION.md")
+}
+
+// SaveOperation writes OPERATION.md with frontmatter + body
 func (c *Commander) SaveOperation(op *Operation) error {
-	dir := c.OperationDir(op.OperationID)
+	dir := c.OperationDir(op.Squad, op.OperationID)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create operation dir: %w", err)
 	}
-	data, err := json.MarshalIndent(op, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal operation: %w", err)
-	}
-	return os.WriteFile(filepath.Join(dir, "operation.json"), data, 0644)
+	md := buildOperationFile(op)
+	return os.WriteFile(c.OperationMDPath(op.Squad, op.OperationID), []byte(md), 0644)
 }
 
-// LoadOperation reads operation.json
-func (c *Commander) LoadOperation(opID string) (*Operation, error) {
-	path := filepath.Join(c.OperationDir(opID), "operation.json")
+// LoadOperation reads and parses OPERATION.md
+func (c *Commander) LoadOperation(squad, opID string) (*Operation, error) {
+	path := c.OperationMDPath(squad, opID)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var op Operation
-	if err := json.Unmarshal(data, &op); err != nil {
-		return nil, err
-	}
-	return &op, nil
+	return parseOperationMD(string(data))
 }
 
-// ListOperations returns all operations
+// ListOperations returns all operations across all squads
 func (c *Commander) ListOperations() ([]*Operation, error) {
-	dir := c.OperationsDir()
-	entries, err := os.ReadDir(dir)
+	squadsDir := filepath.Join(c.SwatRoot, "squads")
+	squadEntries, err := os.ReadDir(squadsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -114,15 +116,146 @@ func (c *Commander) ListOperations() ([]*Operation, error) {
 		return nil, err
 	}
 	var ops []*Operation
-	for _, entry := range entries {
-		if !entry.IsDir() {
+	for _, se := range squadEntries {
+		if !se.IsDir() {
 			continue
 		}
-		op, err := c.LoadOperation(entry.Name())
+		opsDir := filepath.Join(squadsDir, se.Name(), "operations")
+		opEntries, err := os.ReadDir(opsDir)
 		if err != nil {
 			continue
 		}
-		ops = append(ops, op)
+		for _, oe := range opEntries {
+			if !oe.IsDir() {
+				continue
+			}
+			op, err := c.LoadOperation(se.Name(), oe.Name())
+			if err != nil {
+				continue
+			}
+			ops = append(ops, op)
+		}
 	}
 	return ops, nil
+}
+
+// --- OPERATION.md serialization ---
+
+func buildOperationFile(op *Operation) string {
+	var sb strings.Builder
+	sb.WriteString("---\n")
+	sb.WriteString(fmt.Sprintf("operation_id: %s\n", op.OperationID))
+	sb.WriteString(fmt.Sprintf("squad: %s\n", op.Squad))
+	sb.WriteString(fmt.Sprintf("brief: %s\n", op.Brief))
+	sb.WriteString(fmt.Sprintf("status: %s\n", op.Status))
+	sb.WriteString(fmt.Sprintf("source: %s\n", op.Source))
+	sb.WriteString(fmt.Sprintf("pid: %d\n", op.PID))
+	sb.WriteString(fmt.Sprintf("notified: %v\n", op.Notified))
+	sb.WriteString(fmt.Sprintf("retry_count: %d\n", op.RetryCount))
+	sb.WriteString(fmt.Sprintf("created_at: %s\n", op.CreatedAt.Format(time.RFC3339)))
+	writeOptionalTime(&sb, "dispatched_at", op.DispatchedAt)
+	writeOptionalTime(&sb, "completed_at", op.CompletedAt)
+	writeOptionalTime(&sb, "failed_at", op.FailedAt)
+	writeOptionalStr(&sb, "failure_reason", op.FailureReason)
+	writeOptionalStr(&sb, "summary", nilIfEmpty(op.Summary))
+	sb.WriteString("references: []\n")
+	sb.WriteString("---\n\n")
+	sb.WriteString("# OPERATION\n\n")
+	sb.WriteString("## Task\n\n")
+	sb.WriteString(op.Brief + "\n")
+	if op.Details != "" {
+		sb.WriteString("\n## Details\n\n")
+		sb.WriteString(op.Details + "\n")
+	}
+	return sb.String()
+}
+
+func writeOptionalTime(sb *strings.Builder, key string, t *time.Time) {
+	if t != nil {
+		sb.WriteString(fmt.Sprintf("%s: %s\n", key, t.Format(time.RFC3339)))
+	} else {
+		sb.WriteString(fmt.Sprintf("%s:\n", key))
+	}
+}
+
+func writeOptionalStr(sb *strings.Builder, key string, s *string) {
+	if s != nil && *s != "" {
+		sb.WriteString(fmt.Sprintf("%s: %s\n", key, *s))
+	} else {
+		sb.WriteString(fmt.Sprintf("%s:\n", key))
+	}
+}
+
+func nilIfEmpty(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func parseOperationMD(content string) (*Operation, error) {
+	if !strings.HasPrefix(content, "---") {
+		return nil, fmt.Errorf("missing frontmatter")
+	}
+	end := strings.Index(content[3:], "\n---")
+	if end < 0 {
+		return nil, fmt.Errorf("unterminated frontmatter")
+	}
+	fm := content[4 : end+3]
+
+	op := &Operation{}
+	scanner := bufio.NewScanner(strings.NewReader(fm))
+	for scanner.Scan() {
+		line := scanner.Text()
+		idx := strings.Index(line, ":")
+		if idx < 0 {
+			continue
+		}
+		key := strings.TrimSpace(line[:idx])
+		val := strings.TrimSpace(line[idx+1:])
+		switch key {
+		case "operation_id":
+			op.OperationID = val
+		case "squad":
+			op.Squad = val
+		case "brief":
+			op.Brief = val
+		case "status":
+			op.Status = val
+		case "source":
+			op.Source = val
+		case "pid":
+			fmt.Sscanf(val, "%d", &op.PID)
+		case "notified":
+			op.Notified = val == "true"
+		case "retry_count":
+			fmt.Sscanf(val, "%d", &op.RetryCount)
+		case "created_at":
+			if t, err := time.Parse(time.RFC3339, val); err == nil {
+				op.CreatedAt = t
+			}
+		case "dispatched_at":
+			if t, err := time.Parse(time.RFC3339, val); err == nil {
+				op.DispatchedAt = &t
+			}
+		case "completed_at":
+			if t, err := time.Parse(time.RFC3339, val); err == nil {
+				op.CompletedAt = &t
+			}
+		case "failed_at":
+			if t, err := time.Parse(time.RFC3339, val); err == nil {
+				op.FailedAt = &t
+			}
+		case "failure_reason":
+			if val != "" {
+				op.FailureReason = &val
+			}
+		case "summary":
+			op.Summary = val
+		}
+	}
+	if op.OperationID == "" {
+		return nil, fmt.Errorf("missing operation_id in frontmatter")
+	}
+	return op, nil
 }

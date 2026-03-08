@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -30,24 +31,41 @@ func (c *Commander) Scan() {
 	}
 	c.RecentFailures = 0
 	for _, op := range ops {
-		switch op.Status {
-		case "active":
+		if op.Status == "active" {
 			c.handleActive(op)
 		}
 	}
 }
 
 func (c *Commander) handleActive(op *Operation) {
-	// Check if process is still alive
-	if op.PID > 0 && !processAlive(op.PID) {
-		now := time.Now().UTC()
-		reason := "process_crashed"
+	// Process still running — nothing to do
+	if op.PID > 0 && processAlive(op.PID) {
+		// Track long-running operations for review
+		if op.DispatchedAt != nil && time.Since(*op.DispatchedAt) > 30*time.Minute {
+			c.RecentFailures++
+		}
+		return
+	}
+
+	// Process exited — check if Captain completed the operation
+	now := time.Now().UTC()
+	opDir := c.OperationDir(op.Squad, op.OperationID)
+	reportExists := fileExists(filepath.Join(opDir, "report.html"))
+	opCompleted := fileContains(c.OperationMDPath(op.Squad, op.OperationID), "status: completed")
+
+	if reportExists && opCompleted {
+		op.Status = "completed"
+		op.CompletedAt = &now
+		op.PID = 0
+	} else {
+		reason := "process_exited_without_completion"
 		op.Status = "failed"
 		op.FailedAt = &now
 		op.FailureReason = &reason
+		op.PID = 0
 		c.RecentFailures++
-		c.SaveOperation(op)
 	}
+	c.SaveOperation(op)
 }
 
 // ShouldReview determines if LLM review is needed
@@ -69,7 +87,6 @@ func (c *Commander) ShouldReview() bool {
 	return false
 }
 
-// processAlive checks if a PID is running
 func processAlive(pid int) bool {
 	if pid == 0 {
 		return false
@@ -78,8 +95,7 @@ func processAlive(pid int) bool {
 	if err != nil {
 		return false
 	}
-	err = process.Signal(nil)
-	return err == nil
+	return process.Signal(nil) == nil
 }
 
 // GetUnnotified returns completed/failed operations not yet notified
@@ -99,7 +115,7 @@ func (c *Commander) GetUnnotified() ([]*Operation, error) {
 
 // MarkNotified sets notified=true for an operation
 func (c *Commander) MarkNotified(opID string) error {
-	op, err := c.LoadOperation(opID)
+	op, err := c.findOperation(opID)
 	if err != nil {
 		return err
 	}

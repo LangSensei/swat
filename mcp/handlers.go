@@ -220,9 +220,21 @@ func (s *Server) handleCancel(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleSquads(args map[string]interface{}) toolResult {
-	// TODO: scan blueprints/squads/ for MANIFEST.md files
+	squads, err := s.Commander.ListSquads()
+	if err != nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list squads failed: %v", err)}},
+			IsError: true,
+		}
+	}
+	if len(squads) == 0 {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: "no squads installed"}},
+		}
+	}
+	data, _ := json.MarshalIndent(squads, "", "  ")
 	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: "no squads installed yet"}},
+		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}
 }
 
