@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -o swat .
+
+      - name: Package release
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PLATFORM="${{ matrix.goos }}-${{ matrix.goarch }}"
+          TARBALL="swat-${TAG}-${PLATFORM}.tar.gz"
+
+          # Stage files
+          mkdir -p staging/plugin staging/blueprints/_framework
+
+          cp swat staging/
+          cp plugin/index.ts plugin/package.json plugin/openclaw.plugin.json staging/plugin/
+          cp blueprints/OPERATION.md staging/blueprints/
+          cp blueprints/_framework/* staging/blueprints/_framework/
+
+          # Create tarball
+          cd staging
+          tar -czf "../${TARBALL}" .
+          cd ..
+
+          echo "TARBALL=${TARBALL}" >> "$GITHUB_ENV"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.TARBALL }}
