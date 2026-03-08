@@ -150,7 +150,7 @@ install_blueprints() {
     mkdir -p "$bp/squads/_framework" "$bp/skills" "$bp/mcps"
 
     cp "$EXTRACT_DIR/blueprints/OPERATION.md" "$bp/"
-    cp "$EXTRACT_DIR/blueprints/_framework/"* "$bp/squads/_framework/"
+    cp "$EXTRACT_DIR/blueprints/squads/_framework/"* "$bp/squads/_framework/"
 
     ok "Framework blueprints installed"
     info "Install squads/skills/mcps from the marketplace:"
