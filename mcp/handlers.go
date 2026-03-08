@@ -89,7 +89,7 @@ func (s *Server) handleRequest(req jsonrpcRequest) *jsonrpcResponse {
 				},
 				"serverInfo": map[string]interface{}{
 					"name":    "swat",
-					"version": "2.0.0",
+					"version": "1.0.0",
 				},
 			},
 		}
