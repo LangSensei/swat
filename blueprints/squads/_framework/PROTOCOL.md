@@ -4,7 +4,7 @@ version: "1.0.0"
 description: Base squad operation protocol — boot, execution, seal
 dependencies:
   skills: [planning-with-files, knowledge-with-files]
-  mcps: [playwright]
+  mcps: []
 ---
 
 # {SQUAD_NAME} Squad — Operation Protocol
@@ -108,8 +108,6 @@ Execution:
 
 **Parallel dispatch** — launch subagents with independent missions concurrently (multiple Agent calls in one message). Subagents load AGENTS.md automatically.
 
-**Playwright constraint** — Playwright MCP controls a single shared browser instance. Assign browser-dependent tasks to one subagent at a time — do not dispatch multiple subagents that need Playwright concurrently.
-
 **Reading results** — after subagent completion, read their `operators/{role}/` files (plan.md, progress.md, findings.md). Synthesize findings into your own `findings.md`. Dispatch follow-up subagents if gaps remain.
 
 #### Report Generation
@@ -192,7 +190,6 @@ Fill in the placeholders. **Keep all template sections and tables** — do not r
 
 **Critical — The 2-Action Rule:** After every 2 search/browse/view operations, IMMEDIATELY save key findings to `findings.md`. Do not wait. Multimodal and browser content is lost if not written to disk promptly.
 
-**Critical — File Writing Rule:** NEVER use shell heredoc (`cat << EOF`, `cat << 'EOF'`) to write files. Always use Python: `with open("file", "w") as f: f.write(content)`. Heredoc with complex content (HTML, JavaScript, template literals) triggers security blocks and will kill your process.
 
 **Critical — Phase Gate:** Before starting the next phase, you MUST complete ALL of these steps. Do NOT proceed to the next phase until every step is done:
 1. Check off completed items in `plan.md`

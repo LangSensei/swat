@@ -42,13 +42,13 @@ jobs:
           PLATFORM="${{ matrix.goos }}-${{ matrix.goarch }}"
           TARBALL="swat-${TAG}-${PLATFORM}.tar.gz"
 
-          mkdir -p staging/plugin staging/skill staging/blueprints/_framework
+          mkdir -p staging/plugin staging/skill staging/blueprints/squads/_framework
 
           cp swat staging/
           cp plugin/index.ts plugin/package.json plugin/openclaw.plugin.json staging/plugin/
           cp skill/SKILL.md staging/skill/
           cp blueprints/OPERATION.md staging/blueprints/
-          cp blueprints/_framework/* staging/blueprints/_framework/
+          cp blueprints/squads/_framework/* staging/blueprints/squads/_framework/
 
           cd staging
           tar -czf "../${TARBALL}" .

@@ -71,7 +71,7 @@ func (c *Commander) launchOne(op *Operation) error {
 
 	prompt := "Begin operation. Read OPERATION.md for your task brief, then follow the protocol in AGENTS.md."
 
-	cmd := exec.Command("copilot", "-p", prompt, "--allow-all-tools")
+	cmd := exec.Command("copilot", "-p", prompt, "--yolo")
 	cmd.Dir = opDir
 
 	logPath := filepath.Join(opDir, "copilot.log")
