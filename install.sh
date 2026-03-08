@@ -81,7 +81,15 @@ fetch_release() {
         die "Failed to fetch latest release"
     fi
 
+    TAG="$tag"
     info "Latest release: $tag"
+
+    # Check if already installed at this version
+    local version_file="$SWAT_HOME/.version"
+    if [[ -f "$version_file" ]] && [[ "$(cat "$version_file")" == "$tag" ]]; then
+        ok "Already up to date ($tag)"
+        exit 0
+    fi
 
     local tarball="swat-${tag}-${PLATFORM}.tar.gz"
     local dl_url="https://github.com/$REPO/releases/download/${tag}/${tarball}"
@@ -175,6 +183,9 @@ main() {
 
     echo ""
     ok "SWAT v2 installed successfully! 🚀"
+
+    # Record installed version
+    echo "$TAG" > "$SWAT_HOME/.version"
     echo ""
 }
 
