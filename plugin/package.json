@@ -1,0 +1,12 @@
+{
+  "name": "@swat/openclaw-plugin",
+  "version": "2.0.0",
+  "description": "OpenClaw bridge plugin for SWAT Commander MCP server",
+  "main": "index.ts",
+  "openclaw": {
+    "extensions": ["./index.ts"]
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
