@@ -137,6 +137,12 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 		return s.handleSquads(params.Arguments)
 	case "swat_schedule":
 		return s.handleSchedule(params.Arguments)
+	case "swat_install":
+		return s.handleInstall(params.Arguments)
+	case "swat_uninstall":
+		return s.handleUninstall(params.Arguments)
+	case "swat_browse":
+		return s.handleBrowse(params.Arguments)
 	default:
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("unknown tool: %s", params.Name)}},
@@ -242,6 +248,73 @@ func (s *Server) handleSchedule(args map[string]interface{}) toolResult {
 	// TODO: create schedule entry
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: "schedule not yet implemented"}},
+	}
+}
+
+func (s *Server) handleInstall(args map[string]interface{}) toolResult {
+	squad, _ := args["squad"].(string)
+	if squad == "" {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: "squad name is required"}},
+			IsError: true,
+		}
+	}
+
+	if err := s.Commander.Install(squad); err != nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("install failed: %v", err)}},
+			IsError: true,
+		}
+	}
+
+	return toolResult{
+		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("squad %q installed successfully", squad)}},
+	}
+}
+
+func (s *Server) handleUninstall(args map[string]interface{}) toolResult {
+	squad, _ := args["squad"].(string)
+	if squad == "" {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: "squad name is required"}},
+			IsError: true,
+		}
+	}
+
+	purge, _ := args["purge"].(bool)
+
+	if err := s.Commander.Uninstall(squad, purge); err != nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("uninstall failed: %v", err)}},
+			IsError: true,
+		}
+	}
+
+	msg := fmt.Sprintf("squad %q uninstalled", squad)
+	if purge {
+		msg += " (runtime data purged)"
+	}
+	return toolResult{
+		Content: []contentBlock{{Type: "text", Text: msg}},
+	}
+}
+
+func (s *Server) handleBrowse(args map[string]interface{}) toolResult {
+	results, err := s.Commander.Browse()
+	if err != nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("browse failed: %v", err)}},
+			IsError: true,
+		}
+	}
+	if len(results) == 0 {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: "no squads available in marketplace"}},
+		}
+	}
+	data, _ := json.MarshalIndent(results, "", "  ")
+	return toolResult{
+		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}
 }
 

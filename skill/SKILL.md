@@ -1,13 +1,6 @@
 # SWAT - Autonomous Squad Orchestration
 
-SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Each squad is a specialist (coding, research, etc.) that works independently in the background.
-
-## When to Use
-
-- User wants a task done autonomously in the background
-- Tasks that benefit from a specialist agent (coding, research, writing)
-- Multiple tasks that can run in parallel
-- User says things like "do this for me", "handle this", "work on this in the background"
+SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Each squad is a domain specialist that works independently in the background.
 
 ## Tools
 
@@ -15,49 +8,46 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 |---|---|
 | `swat_dispatch` | Send a task to a squad |
 | `swat_status` | Check for completions and unnotified results |
-| `swat_squads` | List available squads |
+| `swat_squads` | List installed squads |
 | `swat_list` | List all operations with status |
 | `swat_cancel` | Cancel a running operation |
 | `swat_schedule` | Create a scheduled/recurring task |
+| `swat_browse` | List squads available in the marketplace |
+| `swat_install` | Install a squad from the marketplace |
+| `swat_uninstall` | Uninstall a squad and clean up dependencies |
 
-## How to Use
+## How to Dispatch
 
-### 1. Check available squads
-Call `swat_squads` to see what's installed. Each squad has a domain (e.g., coding, research).
+1. **Pick a squad** — Call `swat_squads` to see installed squads. If none fit, use `swat_browse` + `swat_install`.
+2. **Dispatch** — `swat_dispatch(brief, squad)`. Returns an operation ID immediately.
+3. **Tell the user** — Confirm the task is dispatched and which squad is on it.
+4. **Move on** — Do NOT wait, poll, or sleep. The squad works in the background.
 
-### 2. Dispatch a task
+## Checking Results
+
+- Call `swat_status` **only when the user asks** about a task, or when you have a natural reason to check (e.g., heartbeat).
+- **Never** use `sleep`, polling loops, or repeated `exec` calls to wait for completion. This blocks the main session and makes you unresponsive.
+- `swat_status` returns unnotified completions. Summarize the result to the user.
+- `swat_list` shows all operations if you need the full picture.
+
+## Critical Rules
+
+1. **Fire and forget** — After dispatch, immediately return control to the user. Do not monitor, poll, or block.
+2. **No sleep/exec polling** — Never run `sleep X && check` or similar patterns. SWAT tasks can take minutes; blocking the session makes you unreachable.
+3. **Squad selection matters** — Pick the squad whose domain matches the task. If no squad fits, say so.
+4. **Concurrent operations** — Multiple tasks can run in parallel across different squads.
+5. **Failed operations** — Include the failure reason when reporting to the user.
+
+## Marketplace
+
+- `swat_browse` — See what's available to install (fetches from GitHub, no clone needed).
+- `swat_install(squad)` — Downloads squad + resolves dependencies automatically.
+- `swat_uninstall(squad)` — Removes squad blueprint + cleans up orphaned dependencies.
+
+## First Run
+
+If SWAT tools are not available, guide the user to install:
 ```
-swat_dispatch:
-  brief: "Short task description" (required)
-  squad: "squad-name" (required — must match an installed squad)
-  details: "Additional context, requirements, links" (optional)
+curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.sh | bash
 ```
-
-### 3. Monitor progress
-- `swat_status` — Returns unnotified completions. Call after dispatch or periodically.
-- `swat_list` — Shows all operations (queued, active, completed, failed).
-
-### 4. Report results
-When `swat_status` returns a completed operation, summarize the result to the user.
-
-### 5. Cancel if needed
-```
-swat_cancel:
-  operation_id: "20260308-a1b2c3d4"
-```
-
-## Typical Flow
-
-1. User requests a task → check `swat_squads` if unsure which squad
-2. `swat_dispatch` with brief + squad → returns operation ID immediately
-3. Tell the user the task is dispatched and which squad is handling it
-4. Later, `swat_status` picks up the completion → summarize to user
-
-## Important Notes
-
-- **Dispatch is async** — the squad works in the background, don't wait for it
-- **Squad selection matters** — pick the squad whose domain matches the task
-- **If no squad fits** — tell the user; don't dispatch to a random squad
-- **Multiple operations** can run concurrently across different squads
-- **Results** are in OPERATION.md when status becomes `completed`
-- **Failed operations** include a failure reason in the status response
+Then restart OpenClaw. After that, install a squad: `swat_install("squad-name")`.
