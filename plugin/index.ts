@@ -138,7 +138,7 @@ const plugin = {
                 ?.filter((c: any) => c.type === "text")
                 .map((c: any) => c.text)
                 .join("\n") ?? "no result";
-              return json((() => { try { return JSON.parse(text); } catch { return { result: text }; } })());
+              return json({ result: text });
             } catch (err) {
               // If connection died, reset for next call
               client = null;
