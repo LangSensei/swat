@@ -167,7 +167,7 @@ func (s *Server) handleDispatch(args map[string]interface{}) toolResult {
 
 	data, _ := json.MarshalIndent(op, "", "  ")
 	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: string(data)}},
+		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("Operation queued. Classify + enrich + launch running async.\n%s", string(data))}},
 	}
 }
 

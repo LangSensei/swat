@@ -92,10 +92,8 @@ func (c *Commander) processOperation(op *Operation) {
 		return
 	}
 
-	// Update op with classified data
+	// Update op with classified data (keep enriched brief from Copilot)
 	reloaded.OperationID = op.OperationID
-	reloaded.Brief = op.Brief
-	reloaded.Details = op.Details
 
 	// Provision and launch
 	if err := c.provision(reloaded, destDir); err != nil {
