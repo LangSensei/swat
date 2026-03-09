@@ -1,27 +1,33 @@
 ---
-operation_id:
-squad:
-brief:
-status: in-progress
-source:
-pid: 0
-notified: false
-retry_count: 0
-created_at:
-dispatched_at:
-completed_at:
-failed_at:
-failure_reason:
-summary:
-references: []
+# Commander fields (written at dispatch, do not modify)
+operation_id: # format: YYYYMMDD-8hex (e.g., 20260212-a1b2c3d4)
+squad: # filled by classify (Copilot)
+source: user
+pid: 0 # written by Commander after launch
+created_at: # UTC timestamp
+dispatched_at: # UTC timestamp
+failed_at: # UTC timestamp
+failure_reason: # filled if status is failed
+references: [] # filled by classify (Copilot), e.g., ["../20260309-xxxx/"]
+
+# Captain output fields (filled during/after execution)
+status: queued # queued → active → completed / failed
+summary: # 2-3 sentence summary of outcome
+completed_at: # UTC timestamp
 ---
 
-# OPERATION
+# {BRIEF_TITLE}
+<!-- Commander: extracted from brief — do not modify -->
 
-## Task
+## Assignment
+<!-- Commander: full operation description — do not modify -->
+{DESCRIPTION}
 
-<!-- Task description injected by Commander -->
+## Summary
+<!-- Captain: write a rich summary of findings and outcome -->
 
-## Details
+## Findings
+<!-- Captain: key discoveries, root cause, impact, affected environments -->
 
-<!-- Optional details -->
+## Action Items
+<!-- Captain: concrete recommendations and next steps -->
