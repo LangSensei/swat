@@ -138,9 +138,8 @@ const plugin = {
 
   register(api: OpenClawPluginApi) {
     const logger = api.logger;
-    const config = api.config?.() ?? {};
-    if (config.binaryPath) {
-      swatBinary = config.binaryPath;
+    if (api.pluginConfig?.binaryPath) {
+      swatBinary = api.pluginConfig.binaryPath as string;
     }
 
     for (const tool of TOOLS) {
