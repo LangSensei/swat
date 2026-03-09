@@ -128,8 +128,6 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 	switch params.Name {
 	case "swat_dispatch":
 		return s.handleDispatch(params.Arguments)
-	case "swat_status":
-		return s.handleStatus(params.Arguments)
 	case "swat_list":
 		return s.handleList(params.Arguments)
 	case "swat_cancel":
@@ -171,14 +169,6 @@ func (s *Server) handleDispatch(args map[string]interface{}) toolResult {
 	}
 }
 
-func (s *Server) handleStatus(args map[string]interface{}) toolResult {
-	status := s.Commander.Status()
-	data, _ := json.MarshalIndent(status, "", "  ")
-	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: string(data)}},
-	}
-}
-
 func (s *Server) handleList(args map[string]interface{}) toolResult {
 	ops, err := s.Commander.ListOperations()
 	if err != nil {
@@ -186,6 +176,12 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
 			IsError: true,
 		}
+	}
+
+	// Compute counts before filtering
+	counts := map[string]int{"queued": 0, "active": 0, "completed": 0, "failed": 0}
+	for _, op := range ops {
+		counts[op.Status]++
 	}
 
 	statusFilter, _ := args["status"].(string)
@@ -217,7 +213,11 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 		}
 	}
 
-	data, _ := json.MarshalIndent(ops, "", "  ")
+	result := map[string]interface{}{
+		"counts":     counts,
+		"operations": ops,
+	}
+	data, _ := json.MarshalIndent(result, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}

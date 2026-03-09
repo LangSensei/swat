@@ -38,16 +38,8 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_status",
-			Description: "Get SWAT task status and active operations",
-			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
-			},
-		},
-		{
 			Name:        "swat_list",
-			Description: "List all SWAT operations",
+			Description: "List SWAT operations with optional filters. Returns counts and matching operations.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{

@@ -1,7 +1,6 @@
 package commander
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -101,22 +100,4 @@ func processAlive(pid int) bool {
 	return p.Signal(syscall.Signal(0)) == nil
 }
 
-// Status returns a summary: counts + active operations
-func (c *Commander) Status() map[string]interface{} {
-	ops, _ := c.ListOperations()
-	counts := map[string]int{"queued": 0, "active": 0, "completed": 0, "failed": 0}
-	var active []*Operation
-	for _, op := range ops {
-		counts[op.Status]++
-		if op.Status == "active" {
-			active = append(active, op)
-		}
-	}
 
-	return map[string]interface{}{
-		"counts":    counts,
-		"active":    active,
-		"iteration": c.Iteration,
-		"message":   fmt.Sprintf("%d queued, %d active, %d completed, %d failed", counts["queued"], counts["active"], counts["completed"], counts["failed"]),
-	}
-}

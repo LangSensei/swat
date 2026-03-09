@@ -7,9 +7,8 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 | Tool | Purpose |
 |---|---|
 | `swat_dispatch` | Send a task to a squad |
-| `swat_status` | Check active operations and task counts |
+| `swat_list` | List operations (supports status/since filters), returns counts |
 | `swat_squads` | List installed squads |
-| `swat_list` | List all operations (supports status and since filters) |
 | `swat_cancel` | Cancel a running operation |
 | `swat_schedule` | Create a scheduled/recurring task |
 | `swat_browse` | List squads available in the marketplace |
@@ -25,10 +24,9 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 
 ## Checking Results
 
-- Call `swat_status` **only when the user asks** about a task, or when you have a natural reason to check (e.g., heartbeat).
+- Call `swat_list` **only when the user asks** about a task, or when you have a natural reason to check (e.g., heartbeat).
 - **Never** use `sleep`, polling loops, or repeated `exec` calls to wait for completion. This blocks the main session and makes you unresponsive.
-- `swat_status` returns counts + currently active operations.
-- `swat_list` shows all operations. Use `status` and `since` filters to narrow results.
+- `swat_list` returns counts + operations. Use `status` and `since` filters to narrow results.
 
 ## Completion Monitoring (Active-Diff Pattern)
 
@@ -41,7 +39,7 @@ cron(action=add, job={
   sessionTarget: "isolated",
   payload: {
     kind: "agentTurn",
-    message: "You are a SWAT completion monitor. Follow these steps exactly:\n\n1. Read workspace file memory/swat-monitor.json. If it doesn't exist, treat lastActiveIds as [].\n2. Call swat_status to get current active operation IDs.\n3. Compute disappeared = IDs in lastActiveIds that are NOT in current active IDs.\n4. For each disappeared ID, call swat_list(status=completed) or swat_list(status=failed) to find its details. Send a summary to the user (operation ID, squad, brief, status, summary).\n5. Write memory/swat-monitor.json with lastActiveIds = current active IDs.\n6. If current active count is 0 AND no disappeared IDs, delete this cron job.\n7. If nothing to report, reply NO_REPLY."
+    message: "You are a SWAT completion monitor. Follow these steps exactly:\n\n1. Read workspace file memory/swat-monitor.json. If it doesn't exist, treat lastActiveIds as [].\n2. Call swat_list(status=active) to get current active operation IDs.\n3. Compute disappeared = IDs in lastActiveIds that are NOT in current active IDs.\n4. For each disappeared ID, call swat_list to find its details (it will be completed or failed). Send a summary to the user (operation ID, squad, brief, status, summary).\n5. Write memory/swat-monitor.json with lastActiveIds = current active IDs.\n6. If current active count is 0 AND no disappeared IDs, delete this cron job.\n7. If nothing to report, reply NO_REPLY."
   },
   delivery: { mode: "announce" }
 })
