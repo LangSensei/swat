@@ -19,7 +19,7 @@ const TOOLS = [
   {
     name: "swat_dispatch",
     label: "SWAT Dispatch",
-    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background.",
+    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background. Read the swat skill for dispatch workflow and completion monitoring guidance.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       details: Type.Optional(Type.String({ description: "Additional details" })),
@@ -53,7 +53,7 @@ const TOOLS = [
   {
     name: "swat_schedule_create",
     label: "SWAT Schedule Create",
-    description: "Create a scheduled recurring task. Zero LLM cost.",
+    description: "Create a scheduled recurring task. Zero LLM cost. Read the swat skill for scheduling guidance and completion monitoring setup.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       cron: Type.String({ description: "Cron expression, 5-field: min hour dom month dow" }),
