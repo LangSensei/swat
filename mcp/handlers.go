@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/LangSensei/swat/commander"
@@ -213,6 +214,29 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 		}
 	}
 
+	// Sort by time descending (most recent first)
+	sort.Slice(ops, func(i, j int) bool {
+		return opSortTime(ops[i]).After(opSortTime(ops[j]))
+	})
+
+	// Pagination: offset then limit (default limit=50)
+	offset := 0
+	if v, ok := args["offset"].(float64); ok && int(v) > 0 {
+		offset = int(v)
+	}
+	limit := 50
+	if v, ok := args["limit"].(float64); ok && int(v) > 0 {
+		limit = int(v)
+	}
+	if offset > len(ops) {
+		ops = nil
+	} else {
+		ops = ops[offset:]
+		if limit < len(ops) {
+			ops = ops[:limit]
+		}
+	}
+
 	result := map[string]interface{}{
 		"counts":     counts,
 		"operations": ops,
@@ -221,6 +245,20 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}
+}
+
+// opSortTime returns the most relevant timestamp for sorting (newest event first)
+func opSortTime(op *commander.Operation) time.Time {
+	if op.CompletedAt != nil {
+		return *op.CompletedAt
+	}
+	if op.FailedAt != nil {
+		return *op.FailedAt
+	}
+	if op.DispatchedAt != nil {
+		return *op.DispatchedAt
+	}
+	return op.CreatedAt
 }
 
 func (s *Server) handleCancel(args map[string]interface{}) toolResult {

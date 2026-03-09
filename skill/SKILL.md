@@ -29,6 +29,9 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 - `swat_list` returns counts + operations. Filters:
   - `status` — `queued`, `active`, `completed`, `failed`
   - `since` — RFC3339 timestamp (e.g. `2026-03-09T04:00:00Z`), only returns terminal ops after this time; active/queued always included
+  - `limit` — max results (default 50)
+  - `offset` — skip first N results (default 0)
+  - Results sorted by time descending (most recent first)
 
 ## Completion Monitoring (Active-Diff Pattern)
 

@@ -45,6 +45,8 @@ func (s *Server) Tools() []ToolDef {
 				"properties": map[string]interface{}{
 					"status": map[string]interface{}{"type": "string", "description": "Filter by status (queued/active/completed/failed)"},
 					"since":  map[string]interface{}{"type": "string", "description": "Only return terminal ops after this RFC3339 timestamp"},
+					"limit":  map[string]interface{}{"type": "integer", "description": "Max results to return (default 50)"},
+					"offset": map[string]interface{}{"type": "integer", "description": "Skip first N results (default 0)"},
 				},
 			},
 		},

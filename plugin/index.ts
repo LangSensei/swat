@@ -36,6 +36,8 @@ const TOOLS = [
     parameters: Type.Object({
       status: Type.Optional(Type.String({ description: "Filter by status (queued/active/completed/failed)" })),
       since: Type.Optional(Type.String({ description: "Only return terminal ops after this RFC3339 timestamp" })),
+      limit: Type.Optional(Type.Number({ description: "Max results to return (default 50)" })),
+      offset: Type.Optional(Type.Number({ description: "Skip first N results (default 0)" })),
     }),
   },
   {
