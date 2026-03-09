@@ -44,10 +44,12 @@ func (c *Commander) SaveOperation(op *Operation) error {
 		"operation_id": op.OperationID,
 		"squad":        op.Squad,
 		"source":       op.Source,
-		"pid":          fmt.Sprintf("%d", op.PID),
-		"status":       op.Status,
-		"created_at":   op.CreatedAt.Format(time.RFC3339),
 	}
+	if op.PID > 0 {
+		patches["pid"] = fmt.Sprintf("%d", op.PID)
+	}
+	patches["status"] = op.Status
+	patches["created_at"] = op.CreatedAt.Format(time.RFC3339)
 	if op.DispatchedAt != nil {
 		patches["dispatched_at"] = op.DispatchedAt.Format(time.RFC3339)
 	}
