@@ -22,7 +22,7 @@ func (c *Commander) scheduleFile(id string) string {
 }
 
 // CreateSchedule creates a new schedule and persists it
-func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string) (*Schedule, error) {
+func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediate bool) (*Schedule, error) {
 	if brief == "" {
 		return nil, fmt.Errorf("brief is required")
 	}
@@ -46,7 +46,12 @@ func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string) (*Schedu
 	id := hex.EncodeToString(b)
 
 	now := time.Now().UTC()
-	next := nextCronTime(cronExpr, now, loc)
+	var next *time.Time
+	if immediate {
+		next = &now
+	} else {
+		next = nextCronTime(cronExpr, now, loc)
+	}
 
 	sched := &Schedule{
 		ID:        id,

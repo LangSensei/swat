@@ -311,8 +311,9 @@ func (s *Server) handleScheduleCreate(args map[string]interface{}) toolResult {
 	details, _ := args["details"].(string)
 	cronExpr, _ := args["cron"].(string)
 	tz, _ := args["timezone"].(string)
+	immediate, _ := args["immediate"].(bool)
 
-	sched, err := s.Commander.CreateSchedule(brief, details, cronExpr, tz)
+	sched, err := s.Commander.CreateSchedule(brief, details, cronExpr, tz, immediate)
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule failed: %v", err)}},

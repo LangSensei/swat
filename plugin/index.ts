@@ -62,6 +62,7 @@ const TOOLS = [
       cron: Type.String({ description: "Cron expression, 5-field: min hour dom month dow" }),
       details: Type.Optional(Type.String({ description: "Additional details" })),
       timezone: Type.Optional(Type.String({ description: "IANA timezone, e.g. Asia/Shanghai (default: UTC)" })),
+      immediate: Type.Optional(Type.Boolean({ description: "If true, trigger first run immediately (default: false)" })),
     }),
   },
   {
