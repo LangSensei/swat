@@ -15,12 +15,7 @@ This will:
 4. Install framework blueprints to `~/.swat/blueprints/`
 5. Auto-register the plugin in your OpenClaw config
 
-Then restart OpenClaw and install a squad:
-```
-swat_browse    → see available squads
-swat_install   → install one
-swat_dispatch  → start a task
-```
+Then restart OpenClaw and you're ready to go.
 
 ## 🗑️ Uninstallation
 
@@ -32,35 +27,13 @@ Add `--purge` to also remove runtime data (operation history, intel).
 
 ## 🎮 Usage
 
-SWAT is controlled entirely through OpenClaw — no CLI needed. Just chat:
+SWAT is controlled entirely through OpenClaw — no CLI needed. Just chat naturally, or use the 9 built-in tools grouped by domain:
 
-> "Analyze 贵州茅台's recent stock performance"
+- **Operations** — `swat_dispatch`, `swat_ops`, `swat_cancel`
+- **Squads** — `swat_squads`, `swat_squad_browse`, `swat_squad_install`, `swat_squad_uninstall`, `swat_squad_update`
+- **Schedule** — `swat_schedule`
 
-Or use the tools directly:
-
-| Tool | Description |
-|---|---|
-| `swat_dispatch` | Dispatch a task to a squad |
-| `swat_status` | Check for completions |
-| `swat_list` | List all operations |
-| `swat_cancel` | Cancel an operation |
-| `swat_squads` | List installed squads |
-| `swat_schedule` | Create a scheduled task |
-| `swat_browse` | Browse squads in the marketplace |
-| `swat_install` | Install a squad + dependencies |
-| `swat_uninstall` | Uninstall a squad + clean orphans |
-
-### Marketplace
-
-Install specialized squads from the [SWAT Marketplace](https://github.com/LangSensei/swat-marketplace):
-
-```
-swat_browse                    → list available squads
-swat_install(squad: "coding")  → install squad + resolve dependencies
-swat_uninstall(squad: "coding") → remove squad + clean orphaned deps
-```
-
-No `git clone` needed — SWAT fetches directly from GitHub API.
+For detailed tool usage and monitoring patterns, see [`skill/SKILL.md`](skill/SKILL.md).
 
 ## 🧠 Architecture
 
@@ -78,7 +51,7 @@ OpenClaw (HQ) → Bridge Plugin → SWAT Commander (Go MCP) → Squads (Copilot 
 2. Commander composes the workspace — assembles AGENTS.md, resolves skill dependencies (BFS), generates `.mcp.json`
 3. Copilot CLI launches in the operation directory, reads OPERATION.md + AGENTS.md
 4. Commander's background loop scans for completion (OPERATION.md status + report.html)
-5. Results surface through `swat_status`
+5. Results surface through OpenClaw
 
 ## 📂 Directory Structure
 
@@ -113,7 +86,7 @@ OpenClaw (HQ) → Bridge Plugin → SWAT Commander (Go MCP) → Squads (Copilot 
 ## 🛠️ Prerequisites
 
 - Linux or macOS
-- [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli) (`copilot`)
+- [GitHub Copilot CLI](https://www.npmjs.com/package/@github/copilot) (`npm install -g @github/copilot`)
 - Node.js 18+
 - [OpenClaw](https://github.com/openclaw/openclaw)
 
