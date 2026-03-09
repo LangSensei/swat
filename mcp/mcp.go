@@ -27,7 +27,7 @@ func (s *Server) Tools() []ToolDef {
 	return []ToolDef{
 		{
 			Name:        "swat_dispatch",
-			Description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background. IMPORTANT: Fire and forget — tell the user the task is dispatched, then move on. Do NOT poll, sleep, or wait for completion.",
+			Description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
@@ -39,7 +39,7 @@ func (s *Server) Tools() []ToolDef {
 		},
 		{
 			Name:        "swat_ops",
-			Description: "List SWAT operations with optional filters. Returns counts and matching operations. Only call when the user asks about task status — never poll in a loop.",
+			Description: "List SWAT operations with optional filters. Returns counts and matching operations.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{

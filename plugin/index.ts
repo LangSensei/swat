@@ -19,7 +19,7 @@ const TOOLS = [
   {
     name: "swat_dispatch",
     label: "SWAT Dispatch",
-    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background.",
+    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified — you do NOT pick a squad. Returns immediately; task runs in background. IMPORTANT: Fire and forget — tell the user the task is dispatched, then move on. Do NOT poll, sleep, or wait for completion. Multiple tasks can run in parallel.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       details: Type.Optional(Type.String({ description: "Additional details" })),
@@ -28,7 +28,7 @@ const TOOLS = [
   {
     name: "swat_ops",
     label: "SWAT Operations",
-    description: "List SWAT operations with optional filters. Returns counts and matching operations.",
+    description: "List SWAT operations with optional filters. Returns counts and matching operations. Only call when the user asks about task status — never poll in a loop.",
     parameters: Type.Object({
       status: Type.Optional(Type.String({ description: "Filter by status (queued/active/completed/failed)" })),
       since: Type.Optional(Type.String({ description: "Only return terminal ops after this RFC3339 timestamp" })),
@@ -53,7 +53,7 @@ const TOOLS = [
   {
     name: "swat_schedule_create",
     label: "SWAT Schedule Create",
-    description: "Create a scheduled recurring task. Zero LLM cost.",
+    description: "Create a scheduled recurring task. Zero LLM cost. Cron format: 5-field (min hour dom month dow). Use SWAT scheduler for deterministic recurring tasks; use OpenClaw cron for tasks needing LLM judgment.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       cron: Type.String({ description: "Cron expression, 5-field: min hour dom month dow" }),
@@ -118,7 +118,7 @@ async function ensureConnected(logger: any): Promise<Client> {
 
   client = new Client({
     name: "openclaw-swat-bridge",
-    version: "2.0.0",
+    version: "1.1.0",
   });
 
   await client.connect(transport);
