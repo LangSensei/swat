@@ -283,10 +283,14 @@ func buildOperationFile(op *Operation) string {
 	sb.WriteString(fmt.Sprintf("operation_id: %s\n", op.OperationID))
 	sb.WriteString("# filled by classify (Copilot)\n")
 	sb.WriteString(fmt.Sprintf("squad: %s\n", op.Squad))
-	sb.WriteString("# who initiated this operation\n")
+	sb.WriteString("# who initiated this operation (user | schedule | system)\n")
 	sb.WriteString(fmt.Sprintf("source: %s\n", op.Source))
 	sb.WriteString("# written by Commander after launch\n")
-	sb.WriteString(fmt.Sprintf("pid: %d\n", op.PID))
+	if op.PID > 0 {
+		sb.WriteString(fmt.Sprintf("pid: %d\n", op.PID))
+	} else {
+		sb.WriteString("pid:\n")
+	}
 	sb.WriteString("# UTC timestamp when operation was created\n")
 	sb.WriteString(fmt.Sprintf("created_at: %s\n", op.CreatedAt.Format(time.RFC3339)))
 	sb.WriteString("# UTC timestamp when Copilot CLI was launched\n")

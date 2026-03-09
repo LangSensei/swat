@@ -4,10 +4,10 @@
 operation_id:
 # filled by classify (Copilot)
 squad:
-# who initiated this operation
-source: user
+# who initiated this operation (user | schedule | system)
+source:
 # written by Commander after launch
-pid: 0
+pid:
 # UTC timestamp when operation was created
 created_at:
 # UTC timestamp when Copilot CLI was launched
@@ -22,7 +22,7 @@ references: []
 
 # Captain output fields (filled during/after execution)
 # queued → active → completed / failed
-status: queued
+status:
 # 2-3 sentence summary of outcome
 summary:
 # UTC timestamp when operation completed successfully
