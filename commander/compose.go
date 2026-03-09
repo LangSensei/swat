@@ -210,3 +210,57 @@ func stripFrontmatter(md string) string {
 	}
 	return strings.TrimLeft(md[end+6:], "\n")
 }
+
+// extractOutputSchema extracts YAML fields from the ## Output Schema section of a MANIFEST.md
+// It looks for the yaml code block and returns the field lines (without the ```yaml wrapper)
+func extractOutputSchema(manifest string) string {
+	body := stripFrontmatter(manifest)
+
+	// Find ## Output Schema section
+	idx := strings.Index(body, "## Output Schema")
+	if idx < 0 {
+		return ""
+	}
+	section := body[idx:]
+
+	// Find yaml code block
+	codeStart := strings.Index(section, "```yaml")
+	if codeStart < 0 {
+		return ""
+	}
+	afterOpen := section[codeStart+7:]
+
+	codeEnd := strings.Index(afterOpen, "```")
+	if codeEnd < 0 {
+		return ""
+	}
+
+	return strings.TrimSpace(afterOpen[:codeEnd])
+}
+
+// injectOutputSchema reads the squad MANIFEST, extracts Output Schema fields,
+// and replaces the {SQUAD_OUTPUT_SCHEMA} placeholder in OPERATION.md
+func (c *Commander) injectOutputSchema(squad string, opDir string) error {
+	manifestPath := filepath.Join(c.SwatRoot, "blueprints", "squads", squad, "MANIFEST.md")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("read manifest: %w", err)
+	}
+
+	schema := extractOutputSchema(string(manifest))
+
+	opMDPath := filepath.Join(opDir, "OPERATION.md")
+	content, err := os.ReadFile(opMDPath)
+	if err != nil {
+		return fmt.Errorf("read OPERATION.md: %w", err)
+	}
+
+	placeholder := "{OUTPUT_SCHEMA}"
+	contentStr := string(content)
+	if !strings.Contains(contentStr, placeholder) {
+		return nil
+	}
+
+	replaced := strings.Replace(contentStr, placeholder, schema, 1)
+	return os.WriteFile(opMDPath, []byte(replaced), 0644)
+}

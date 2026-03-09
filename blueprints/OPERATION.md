@@ -28,8 +28,7 @@ summary:
 # UTC timestamp when operation completed successfully
 completed_at:
 # Squad-specific output fields
-# Commander appends fields from the squad's MANIFEST.md Output Schema below this line.
-# Captain fills them during the operation.
+{OUTPUT_SCHEMA}
 ---
 
 # {BRIEF}

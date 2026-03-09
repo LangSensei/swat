@@ -105,6 +105,12 @@ func (c *Commander) processOperation(op *Operation) {
 		return
 	}
 
+	// Inject Output Schema from MANIFEST into OPERATION.md
+	if err := c.injectOutputSchema(reloaded.Squad, destDir); err != nil {
+		c.failOperation(reloaded, fmt.Sprintf("inject output schema: %v", err))
+		return
+	}
+
 	// Provision and launch
 	if err := c.provision(reloaded, destDir); err != nil {
 		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
