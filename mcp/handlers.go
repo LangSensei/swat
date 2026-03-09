@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/LangSensei/swat/commander"
 )
@@ -196,6 +197,24 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 			}
 		}
 		ops = filtered
+	}
+
+	// Filter by time: only return ops with completed_at or failed_at after "since"
+	sinceStr, _ := args["since"].(string)
+	if sinceStr != "" {
+		if sinceTime, err := time.Parse(time.RFC3339, sinceStr); err == nil {
+			var filtered []*commander.Operation
+			for _, op := range ops {
+				if op.CompletedAt != nil && op.CompletedAt.After(sinceTime) {
+					filtered = append(filtered, op)
+				} else if op.FailedAt != nil && op.FailedAt.After(sinceTime) {
+					filtered = append(filtered, op)
+				} else if op.Status == "active" || op.Status == "queued" {
+					filtered = append(filtered, op) // always include in-flight
+				}
+			}
+			ops = filtered
+		}
 	}
 
 	data, _ := json.MarshalIndent(ops, "", "  ")

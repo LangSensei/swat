@@ -39,7 +39,7 @@ func (s *Server) Tools() []ToolDef {
 		},
 		{
 			Name:        "swat_status",
-			Description: "Get SWAT task status and unnotified completions",
+			Description: "Get SWAT task status and active operations",
 			InputSchema: map[string]interface{}{
 				"type":       "object",
 				"properties": map[string]interface{}{},
@@ -52,6 +52,7 @@ func (s *Server) Tools() []ToolDef {
 				"type": "object",
 				"properties": map[string]interface{}{
 					"status": map[string]interface{}{"type": "string", "description": "Filter by status (queued/active/completed/failed)"},
+					"since":  map[string]interface{}{"type": "string", "description": "Only return terminal ops after this RFC3339 timestamp"},
 				},
 			},
 		},

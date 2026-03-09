@@ -18,7 +18,6 @@ type Operation struct {
 	Details       string     `json:"details,omitempty"`
 	Status        string     `json:"status"`
 	PID           int        `json:"pid,omitempty"`
-	Notified      bool       `json:"notified"`
 	RetryCount    int        `json:"retry_count"`
 	Source        string     `json:"source"`
 	CreatedAt     time.Time  `json:"created_at"`
@@ -148,7 +147,6 @@ func buildOperationFile(op *Operation) string {
 	sb.WriteString(fmt.Sprintf("status: %s\n", op.Status))
 	sb.WriteString(fmt.Sprintf("source: %s\n", op.Source))
 	sb.WriteString(fmt.Sprintf("pid: %d\n", op.PID))
-	sb.WriteString(fmt.Sprintf("notified: %v\n", op.Notified))
 	sb.WriteString(fmt.Sprintf("retry_count: %d\n", op.RetryCount))
 	sb.WriteString(fmt.Sprintf("created_at: %s\n", op.CreatedAt.Format(time.RFC3339)))
 	writeOptionalTime(&sb, "dispatched_at", op.DispatchedAt)
@@ -225,7 +223,7 @@ func parseOperationMD(content string) (*Operation, error) {
 		case "pid":
 			fmt.Sscanf(val, "%d", &op.PID)
 		case "notified":
-			op.Notified = val == "true"
+			// legacy field, ignored
 		case "retry_count":
 			fmt.Sscanf(val, "%d", &op.RetryCount)
 		case "created_at":
