@@ -20,7 +20,7 @@ func (c *Commander) Dispatch(brief, details string) (*Operation, error) {
 		Source:      "user",
 		CreatedAt:   now,
 	}
-	if err := c.SaveOperation(op); err != nil {
+	if err := c.CreateOperation(op); err != nil {
 		return nil, err
 	}
 

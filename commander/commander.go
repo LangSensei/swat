@@ -98,11 +98,10 @@ func (c *Commander) StagingOperationMDPath(opID string) string {
 	return filepath.Join(c.StagingOperationDir(opID), "OPERATION.md")
 }
 
-// SaveOperation writes OPERATION.md with frontmatter + body
-func (c *Commander) SaveOperation(op *Operation) error {
+// CreateOperation writes a new OPERATION.md with full template
+func (c *Commander) CreateOperation(op *Operation) error {
 	var dir, mdPath string
 	if op.Squad == "" {
-		// Staging
 		dir = c.StagingOperationDir(op.OperationID)
 		mdPath = c.StagingOperationMDPath(op.OperationID)
 	} else {
@@ -114,6 +113,89 @@ func (c *Commander) SaveOperation(op *Operation) error {
 	}
 	md := buildOperationFile(op)
 	return os.WriteFile(mdPath, []byte(md), 0644)
+}
+
+// SaveOperation updates OPERATION.md using field-level patching (preserves comments and body)
+func (c *Commander) SaveOperation(op *Operation) error {
+	var mdPath string
+	if op.Squad == "" {
+		mdPath = c.StagingOperationMDPath(op.OperationID)
+	} else {
+		mdPath = c.OperationMDPath(op.Squad, op.OperationID)
+	}
+
+	// If file doesn't exist, create it
+	if !fileExists(mdPath) {
+		return c.CreateOperation(op)
+	}
+
+	// Patch individual fields
+	patches := map[string]string{
+		"operation_id":   op.OperationID,
+		"squad":          op.Squad,
+		"source":         op.Source,
+		"pid":            fmt.Sprintf("%d", op.PID),
+		"status":         op.Status,
+		"created_at":     op.CreatedAt.Format(time.RFC3339),
+	}
+	if op.DispatchedAt != nil {
+		patches["dispatched_at"] = op.DispatchedAt.Format(time.RFC3339)
+	}
+	if op.CompletedAt != nil {
+		patches["completed_at"] = op.CompletedAt.Format(time.RFC3339)
+	}
+	if op.FailedAt != nil {
+		patches["failed_at"] = op.FailedAt.Format(time.RFC3339)
+	}
+	if op.FailureReason != nil {
+		patches["failure_reason"] = *op.FailureReason
+	}
+	if op.Summary != "" {
+		patches["summary"] = op.Summary
+	}
+
+	return patchFrontmatterFields(mdPath, patches)
+}
+
+// patchFrontmatterFields updates specific key-value pairs in YAML frontmatter
+func patchFrontmatterFields(path string, patches map[string]string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	content := string(data)
+	if !strings.HasPrefix(content, "---") {
+		return fmt.Errorf("missing frontmatter")
+	}
+
+	end := strings.Index(content[3:], "\n---")
+	if end < 0 {
+		return fmt.Errorf("unterminated frontmatter")
+	}
+
+	fm := content[4 : end+3]
+	body := content[end+7:]
+
+	// Patch each field in frontmatter
+	lines := strings.Split(fm, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#") || trimmed == "" {
+			continue
+		}
+		idx := strings.Index(line, ":")
+		if idx < 0 {
+			continue
+		}
+		key := strings.TrimSpace(line[:idx])
+		if val, ok := patches[key]; ok {
+			lines[i] = key + ": " + val
+		}
+	}
+
+	result := "---\n" + strings.Join(lines, "\n") + "\n---" + body
+	return os.WriteFile(path, []byte(result), 0644)
 }
 
 // LoadOperation reads and parses OPERATION.md
@@ -191,16 +273,20 @@ func buildOperationFile(op *Operation) string {
 	var sb strings.Builder
 	sb.WriteString("---\n")
 	sb.WriteString("# Commander fields (written at dispatch, do not modify)\n")
+	sb.WriteString("# format: YYYYMMDD-8hex\n")
 	sb.WriteString(fmt.Sprintf("operation_id: %s\n", op.OperationID))
+	sb.WriteString("# filled by classify (Copilot)\n")
 	sb.WriteString(fmt.Sprintf("squad: %s\n", op.Squad))
 	sb.WriteString(fmt.Sprintf("source: %s\n", op.Source))
+	sb.WriteString("# written by Commander after launch\n")
 	sb.WriteString(fmt.Sprintf("pid: %d\n", op.PID))
+	sb.WriteString("# UTC timestamps\n")
 	sb.WriteString(fmt.Sprintf("created_at: %s\n", op.CreatedAt.Format(time.RFC3339)))
 	writeOptionalTime(&sb, "dispatched_at", op.DispatchedAt)
 	writeOptionalTime(&sb, "failed_at", op.FailedAt)
+	sb.WriteString("# filled if status is failed\n")
 	writeOptionalStr(&sb, "failure_reason", op.FailureReason)
-
-	// References
+	sb.WriteString("# filled by classify (Copilot)\n")
 	if len(op.References) > 0 {
 		sb.WriteString("references:\n")
 		for _, ref := range op.References {
@@ -211,17 +297,18 @@ func buildOperationFile(op *Operation) string {
 	}
 
 	sb.WriteString("\n# Captain output fields (filled during/after execution)\n")
+	sb.WriteString("# queued → active → completed / failed\n")
 	sb.WriteString(fmt.Sprintf("status: %s\n", op.Status))
+	sb.WriteString("# 2-3 sentence summary of outcome\n")
 	writeOptionalStr(&sb, "summary", nilIfEmpty(op.Summary))
 	writeOptionalTime(&sb, "completed_at", op.CompletedAt)
 	sb.WriteString("---\n\n")
 
-	// Body: brief as title, details as assignment
+	// Body
 	briefTitle := op.Brief
 	if len(briefTitle) > 80 {
 		briefTitle = briefTitle[:80] + "..."
 	}
-	// Use first line of brief as title
 	if idx := strings.Index(briefTitle, "\n"); idx > 0 {
 		briefTitle = briefTitle[:idx]
 	}

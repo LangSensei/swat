@@ -1,19 +1,27 @@
 ---
 # Commander fields (written at dispatch, do not modify)
-operation_id: # format: YYYYMMDD-8hex (e.g., 20260212-a1b2c3d4)
-squad: # filled by classify (Copilot)
+# format: YYYYMMDD-8hex (e.g., 20260212-a1b2c3d4)
+operation_id:
+# filled by classify (Copilot)
+squad:
 source: user
-pid: 0 # written by Commander after launch
-created_at: # UTC timestamp
-dispatched_at: # UTC timestamp
-failed_at: # UTC timestamp
-failure_reason: # filled if status is failed
-references: [] # filled by classify (Copilot), e.g., ["../20260309-xxxx/"]
+# written by Commander after launch
+pid: 0
+# UTC timestamps
+created_at:
+dispatched_at:
+failed_at:
+# filled if status is failed
+failure_reason:
+# filled by classify (Copilot), e.g., ["../20260309-xxxx/"]
+references: []
 
 # Captain output fields (filled during/after execution)
-status: queued # queued → active → completed / failed
-summary: # 2-3 sentence summary of outcome
-completed_at: # UTC timestamp
+# queued → active → completed / failed
+status: queued
+# 2-3 sentence summary of outcome
+summary:
+completed_at:
 ---
 
 # {BRIEF_TITLE}
