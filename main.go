@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -9,7 +10,14 @@ import (
 	"github.com/LangSensei/swat/mcp"
 )
 
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Printf("swat %s\n", version)
+		os.Exit(0)
+	}
+
 	mcpOnly := len(os.Args) > 1 && os.Args[1] == "--mcp-only"
 
 	cmdr := commander.New("~/.swat")
