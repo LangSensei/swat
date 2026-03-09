@@ -3,8 +3,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Type } from "@sinclair/typebox";
 import { spawn } from "child_process";
-import { resolve } from "path";
-import { homedir } from "os";
+
 
 let client: Client | null = null;
 let transport: StdioClientTransport | null = null;
@@ -16,8 +15,7 @@ function json(data: unknown) {
   };
 }
 
-const DEFAULT_SWAT_BINARY = resolve(homedir(), ".local", "bin", "swat");
-let swatBinary = DEFAULT_SWAT_BINARY;
+let swatBinary = "";
 
 const TOOLS = [
   {
@@ -140,6 +138,10 @@ const plugin = {
     const logger = api.logger;
     if (api.pluginConfig?.binaryPath) {
       swatBinary = api.pluginConfig.binaryPath as string;
+    }
+    if (!swatBinary) {
+      logger.error("SWAT binary path not configured. Run install.sh or set plugins.entries.swat-mcp-bridge.config.binaryPath");
+      return;
     }
 
     for (const tool of TOOLS) {
