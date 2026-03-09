@@ -103,8 +103,9 @@ fetch_release() {
     info "Latest release: $tag"
 
     # Check if already installed at this version
-    local version_file="$SWAT_HOME/.version"
-    if [[ -f "$version_file" ]] && [[ "$(cat "$version_file")" == "$tag" ]]; then
+    local current
+    current=$(swat --version 2>/dev/null | awk '{print $2}' || true)
+    if [[ -n "$current" ]] && [[ "$current" == "$tag" ]]; then
         ok "Already up to date ($tag)"
         exit 0
     fi
@@ -283,9 +284,6 @@ main() {
 
     echo ""
     ok "SWAT v2 installed successfully! 🚀"
-
-    # Record installed version
-    echo "$TAG" > "$SWAT_HOME/.version"
 
     echo ""
     info "Next steps:"

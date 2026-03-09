@@ -10,7 +10,7 @@ curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.s
 
 This will:
 1. Download the latest release for your platform (Linux/macOS, amd64/arm64)
-2. Install the SWAT binary to `~/.local/bin/`
+2. Install the SWAT binary to `~/.local/bin/` (auto-added to PATH in your shell profile)
 3. Set up the OpenClaw bridge plugin at `~/.swat/plugin/`
 4. Install framework blueprints to `~/.swat/blueprints/`
 5. Auto-register the plugin in your OpenClaw config
@@ -46,6 +46,15 @@ SWAT is controlled entirely through OpenClaw — no CLI needed. Just chat natura
 - `swat_schedule_delete` — Delete a schedule
 
 For detailed tool usage and monitoring patterns, see [`skill/SKILL.md`](skill/SKILL.md).
+
+### CLI Flags
+
+The `swat` binary supports the following flags:
+
+| Flag | Description |
+|------|-------------|
+| `--version` | Print the installed version (`swat <version>`) and exit |
+| `--mcp-only` | Start only the MCP server — skip the background commander loop |
 
 ## 🧠 Architecture
 
@@ -118,6 +127,8 @@ Built-in Go cron scheduler for recurring tasks — zero LLM cost:
 
 ```bash
 go build -o swat .   # Go 1.24+
+# With version injection:
+go build -ldflags "-X main.version=v1.0.0" -o swat .
 ```
 
 ## 📄 License

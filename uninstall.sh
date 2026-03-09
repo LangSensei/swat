@@ -24,7 +24,6 @@ if [[ "${1:-}" != "--yes" ]]; then
     echo "  - Binary:     $BIN_DIR/swat"
     echo "  - Plugin:     $SWAT_HOME/plugin/"
     echo "  - Blueprints: $SWAT_HOME/blueprints/"
-    echo "  - Version:    $SWAT_HOME/.version"
     echo ""
     warn "Runtime data ($SWAT_HOME/squads/, $SWAT_HOME/schedules/) will be KEPT unless you pass --purge"
     echo ""
@@ -62,10 +61,6 @@ if [[ -d "$SWAT_HOME/blueprints" ]]; then
     rm -rf "$SWAT_HOME/blueprints"
     ok "Removed $SWAT_HOME/blueprints/"
 fi
-
-# --- Remove version file ------------------------------------------------
-
-rm -f "$SWAT_HOME/.version"
 
 # --- Purge runtime data -------------------------------------------------
 

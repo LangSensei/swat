@@ -34,7 +34,7 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build -o swat .
+        run: go build -ldflags "-X main.version=${{ github.ref_name }}" -o swat .
 
       - name: Package tarball
         run: |
