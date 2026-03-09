@@ -69,17 +69,37 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_schedule",
-			Description: "Create a scheduled task",
+			Name:        "swat_schedule_create",
+			Description: "Create a scheduled recurring task. Zero LLM cost — pure Go cron triggers dispatch automatically.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"brief":   map[string]interface{}{"type": "string", "description": "Task description"},
-					"details": map[string]interface{}{"type": "string", "description": "Additional details"},
-					"squad":   map[string]interface{}{"type": "string", "description": "Target squad"},
-					"cron":    map[string]interface{}{"type": "string", "description": "Cron expression"},
+					"brief":    map[string]interface{}{"type": "string", "description": "Task description"},
+					"details":  map[string]interface{}{"type": "string", "description": "Additional details"},
+					"cron":     map[string]interface{}{"type": "string", "description": "Cron expression, 5-field: min hour dom month dow"},
+					"timezone":  map[string]interface{}{"type": "string", "description": "IANA timezone, e.g. Asia/Shanghai (default: UTC)"},
+					"immediate": map[string]interface{}{"type": "boolean", "description": "If true, trigger first run immediately (default: false)"},
 				},
 				"required": []string{"brief", "cron"},
+			},
+		},
+		{
+			Name:        "swat_schedules",
+			Description: "List all scheduled tasks with next run times",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        "swat_schedule_delete",
+			Description: "Delete a scheduled task",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id": map[string]interface{}{"type": "string", "description": "Schedule ID"},
+				},
+				"required": []string{"id"},
 			},
 		},
 		{

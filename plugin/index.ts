@@ -54,15 +54,31 @@ const TOOLS = [
     parameters: Type.Object({}),
   },
   {
-    name: "swat_schedule",
-    label: "SWAT Schedule",
-    description: "Create a scheduled task",
+    name: "swat_schedule_create",
+    label: "SWAT Schedule Create",
+    description: "Create a scheduled recurring task. Zero LLM cost.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
-      cron: Type.String({ description: "Cron expression" }),
+      cron: Type.String({ description: "Cron expression, 5-field: min hour dom month dow" }),
       details: Type.Optional(Type.String({ description: "Additional details" })),
-      squad: Type.Optional(Type.String({ description: "Target squad" })),
+      timezone: Type.Optional(Type.String({ description: "IANA timezone, e.g. Asia/Shanghai (default: UTC)" })),
+      immediate: Type.Optional(Type.Boolean({ description: "If true, trigger first run immediately (default: false)" })),
     }),
+  },
+  {
+    name: "swat_schedules",
+    label: "SWAT Schedules",
+    description: "List all scheduled tasks with next run times",
+    parameters: Type.Object({}),
+  },
+  {
+    name: "swat_schedule_delete",
+    label: "SWAT Schedule Delete",
+    description: "Delete a scheduled task",
+    parameters: Type.Object({
+      id: Type.String({ description: "Schedule ID" }),
+    }),
+  },
   },
   {
     name: "swat_squad_browse",

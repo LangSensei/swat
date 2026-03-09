@@ -27,11 +27,23 @@ Add `--purge` to also remove runtime data (operation history, intel).
 
 ## 🎮 Usage
 
-SWAT is controlled entirely through OpenClaw — no CLI needed. Just chat naturally, or use the 9 built-in tools grouped by domain:
+SWAT is controlled entirely through OpenClaw — no CLI needed. Just chat naturally, or use the 10 built-in tools:
 
-- **Operations** — `swat_dispatch`, `swat_ops`, `swat_cancel`
-- **Squads** — `swat_squads`, `swat_squad_browse`, `swat_squad_install`, `swat_squad_uninstall`, `swat_squad_update`
-- **Schedule** — `swat_schedule`
+### Operations
+- `swat_dispatch` — Dispatch a task (auto-classified to the right squad)
+- `swat_list` — List operations with filters (status/since/limit/offset)
+- `swat_cancel` — Cancel a running operation
+
+### Squads
+- `swat_squads` — List installed squads
+- `swat_browse` — Browse the marketplace
+- `swat_install` — Install a squad from the marketplace
+- `swat_uninstall` — Uninstall a squad
+
+### Schedule
+- `swat_schedule_create` — Create a recurring task (zero LLM cost)
+- `swat_schedules` — List all schedules
+- `swat_schedule_delete` — Delete a schedule
 
 For detailed tool usage and monitoring patterns, see [`skill/SKILL.md`](skill/SKILL.md).
 
@@ -42,16 +54,24 @@ OpenClaw (HQ) → Bridge Plugin → SWAT Commander (Go MCP) → Squads (Copilot 
 ```
 
 1. **OpenClaw** — Your interface. Chat to dispatch and monitor tasks.
-2. **Commander** — Go MCP server. Handles dispatch, workspace composition, dependency resolution, and completion scanning.
+2. **Commander** — Go MCP server. Handles dispatch, workspace composition, dependency resolution, scheduling, and completion scanning.
 3. **Squads** — Specialist agents. Each runs as an independent Copilot CLI process with its own skills, MCP tools, and protocol.
 
 ### How It Works
 
-1. You dispatch a task (specify squad or let Commander classify)
+1. You dispatch a task (Commander auto-classifies to the right squad)
 2. Commander composes the workspace — assembles AGENTS.md, resolves skill dependencies (BFS), generates `.mcp.json`
 3. Copilot CLI launches in the operation directory, reads OPERATION.md + AGENTS.md
 4. Commander's background loop scans for completion (OPERATION.md status + report.html)
 5. Results surface through OpenClaw
+
+### Scheduler
+
+Built-in Go cron scheduler for recurring tasks — zero LLM cost:
+- Standard 5-field cron expressions with timezone support
+- `immediate` flag for first-run-now behavior
+- In-flight protection (skips if previous run still active)
+- Startup catch-up (checks due schedules on boot)
 
 ## 📂 Directory Structure
 
@@ -70,6 +90,7 @@ OpenClaw (HQ) → Bridge Plugin → SWAT Commander (Go MCP) → Squads (Copilot 
 │   └── mcps/                      # MCP server configs
 │
 ├── squads/                        # Runtime data
+│   ├── _unclassified/             # Operations before squad assignment
 │   └── <squad>/
 │       ├── INTEL.md               # Persistent cross-operation knowledge
 │       └── operations/
@@ -79,6 +100,9 @@ OpenClaw (HQ) → Bridge Plugin → SWAT Commander (Go MCP) → Squads (Copilot 
 │               ├── .mcp.json
 │               ├── report.html
 │               └── .github/skills/
+│
+├── schedules/                     # Schedule definitions (JSON)
+│   └── <id>.json
 │
 └── plugin/                        # OpenClaw bridge plugin
 ```

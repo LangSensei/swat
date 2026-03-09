@@ -22,13 +22,35 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 ### Schedule
 | Tool | Purpose |
 |---|---|
-| `swat_schedule` | Create a scheduled/recurring task |
+| `swat_schedule_create` | Create a scheduled recurring task (zero LLM cost) |
+| `swat_schedules` | List all scheduled tasks with next run times |
+| `swat_schedule_delete` | Delete a scheduled task |
 
 ## How to Dispatch
 
 1. **Dispatch** — `swat_dispatch(brief)`. Squad is auto-classified. Returns an operation ID immediately.
 2. **Tell the user** — Confirm the task is dispatched. Classification + launch happens async in the background.
 3. **Move on** — Do NOT wait, poll, or sleep. The squad works in the background.
+
+## Scheduling Recurring Tasks
+
+Use SWAT's built-in scheduler for deterministic, zero-LLM-cost recurring tasks:
+
+```
+swat_schedule_create(brief="分析紫金矿业601899", cron="0 9 * * 1", timezone="Asia/Shanghai")
+```
+
+- **Cron format**: Standard 5-field — `min hour dom month dow`
+- **`immediate`**: Set to `true` to trigger the first run right away (default: `false`)
+- **In-flight protection**: If a previous run from the same schedule is still queued/active, the next trigger is skipped
+- **Startup catch-up**: Due schedules are checked on SWAT startup — no missed runs after restarts
+- **Source tracking**: Operations from schedules have `source: schedule/{id}` for traceability
+
+Use `swat_schedules` to view all schedules and `swat_schedule_delete(id)` to remove one.
+
+**When to use SWAT scheduler vs OpenClaw cron:**
+- SWAT scheduler → deterministic recurring tasks (zero LLM cost, e.g. "analyze X every Monday")
+- OpenClaw cron → tasks needing LLM judgment (e.g. completion monitoring with active-diff)
 
 ## Checking Results
 
