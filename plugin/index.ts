@@ -79,7 +79,6 @@ const TOOLS = [
       id: Type.String({ description: "Schedule ID" }),
     }),
   },
-  },
   {
     name: "swat_squad_browse",
     label: "SWAT Squad Browse",
