@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Dispatch creates a new operation in staging and starts async classify+enrich+launch
+// Dispatch creates a new operation in _unclassified and starts async classify+enrich+launch
 func (c *Commander) Dispatch(brief, details string) (*Operation, error) {
 	now := time.Now().UTC()
 	op := &Operation{
@@ -32,7 +32,13 @@ func (c *Commander) Dispatch(brief, details string) (*Operation, error) {
 
 // processOperation runs classify+enrich via Copilot CLI, then provisions and launches
 func (c *Commander) processOperation(op *Operation) {
-	stagingDir := c.StagingOperationDir(op.OperationID)
+	unclassifiedDir := c.UnclassifiedOperationDir(op.OperationID)
+
+	// Validate squad exists before moving
+	validateSquad := func(squad string) bool {
+		manifestPath := filepath.Join(c.SwatRoot, "blueprints", "squads", squad, "MANIFEST.md")
+		return fileExists(manifestPath)
+	}
 
 	// Run classify+enrich Copilot CLI
 	prompt := fmt.Sprintf(
@@ -50,9 +56,9 @@ func (c *Commander) processOperation(op *Operation) {
 	)
 
 	cmd := exec.Command("copilot", "-p", prompt, "--yolo")
-	cmd.Dir = stagingDir
+	cmd.Dir = unclassifiedDir
 
-	logPath := filepath.Join(stagingDir, "classify.log")
+	logPath := filepath.Join(unclassifiedDir, "classify.log")
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		c.failOperation(op, fmt.Sprintf("create classify log: %v", err))
@@ -70,7 +76,7 @@ func (c *Commander) processOperation(op *Operation) {
 	logFile.Close()
 
 	// Re-read OPERATION.md after classify
-	reloaded, err := c.LoadStagingOperation(op.OperationID)
+	reloaded, err := c.LoadUnclassifiedOperation(op.OperationID)
 	if err != nil {
 		c.failOperation(op, fmt.Sprintf("reload after classify: %v", err))
 		return
@@ -81,13 +87,19 @@ func (c *Commander) processOperation(op *Operation) {
 		return
 	}
 
-	// Move from staging to squad operations dir
+	// Validate squad exists in blueprints
+	if !validateSquad(reloaded.Squad) {
+		c.failOperation(op, fmt.Sprintf("classify assigned unknown squad: %s", reloaded.Squad))
+		return
+	}
+
+	// Move from _unclassified to squad operations dir
 	destDir := c.OperationDir(reloaded.Squad, op.OperationID)
 	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
 		c.failOperation(op, fmt.Sprintf("create squad dir: %v", err))
 		return
 	}
-	if err := os.Rename(stagingDir, destDir); err != nil {
+	if err := os.Rename(unclassifiedDir, destDir); err != nil {
 		c.failOperation(op, fmt.Sprintf("move to squad: %v", err))
 		return
 	}

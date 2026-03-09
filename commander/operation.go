@@ -12,8 +12,8 @@ import (
 func (c *Commander) CreateOperation(op *Operation) error {
 	var dir, mdPath string
 	if op.Squad == "" {
-		dir = c.StagingOperationDir(op.OperationID)
-		mdPath = c.StagingOperationMDPath(op.OperationID)
+		dir = c.UnclassifiedOperationDir(op.OperationID)
+		mdPath = c.UnclassifiedOperationMDPath(op.OperationID)
 	} else {
 		dir = c.OperationDir(op.Squad, op.OperationID)
 		mdPath = c.OperationMDPath(op.Squad, op.OperationID)
@@ -29,7 +29,7 @@ func (c *Commander) CreateOperation(op *Operation) error {
 func (c *Commander) SaveOperation(op *Operation) error {
 	var mdPath string
 	if op.Squad == "" {
-		mdPath = c.StagingOperationMDPath(op.OperationID)
+		mdPath = c.UnclassifiedOperationMDPath(op.OperationID)
 	} else {
 		mdPath = c.OperationMDPath(op.Squad, op.OperationID)
 	}
@@ -118,9 +118,9 @@ func (c *Commander) LoadOperation(squad, opID string) (*Operation, error) {
 	return parseOperationMD(string(data))
 }
 
-// LoadStagingOperation reads and parses OPERATION.md from staging
-func (c *Commander) LoadStagingOperation(opID string) (*Operation, error) {
-	path := c.StagingOperationMDPath(opID)
+// LoadUnclassifiedOperation reads and parses OPERATION.md from unclassified
+func (c *Commander) LoadUnclassifiedOperation(opID string) (*Operation, error) {
+	path := c.UnclassifiedOperationMDPath(opID)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -128,24 +128,10 @@ func (c *Commander) LoadStagingOperation(opID string) (*Operation, error) {
 	return parseOperationMD(string(data))
 }
 
-// ListOperations returns all operations across all squads (and staging)
+// ListOperations returns all operations across all squads (including _unclassified)
 func (c *Commander) ListOperations() ([]*Operation, error) {
 	var ops []*Operation
 
-	// Scan staging
-	stagingOpsDir := filepath.Join(c.StagingDir(), "operations")
-	if entries, err := os.ReadDir(stagingOpsDir); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			if op, err := c.LoadStagingOperation(e.Name()); err == nil {
-				ops = append(ops, op)
-			}
-		}
-	}
-
-	// Scan squads
 	squadsDir := filepath.Join(c.SwatRoot, "squads")
 	squadEntries, err := os.ReadDir(squadsDir)
 	if err != nil {
@@ -177,7 +163,7 @@ func (c *Commander) ListOperations() ([]*Operation, error) {
 	return ops, nil
 }
 
-// findOperation locates an operation by ID across all squads and staging
+// findOperation locates an operation by ID across all squads
 func (c *Commander) findOperation(opID string) (*Operation, error) {
 	ops, err := c.ListOperations()
 	if err != nil {

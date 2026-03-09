@@ -74,14 +74,19 @@ func GenerateOpID() string {
 
 // --- Path helpers ---
 
-// StagingDir returns the path to the staging area
-func (c *Commander) StagingDir() string {
-	return filepath.Join(c.SwatRoot, "_staging")
+// UnclassifiedDir returns the path to the unclassified operations area
+func (c *Commander) UnclassifiedDir() string {
+	return filepath.Join(c.SwatRoot, "squads", "_unclassified")
 }
 
-// StagingOperationDir returns the path to an operation in staging
-func (c *Commander) StagingOperationDir(opID string) string {
-	return filepath.Join(c.StagingDir(), "operations", opID)
+// UnclassifiedOperationDir returns the path to an unclassified operation
+func (c *Commander) UnclassifiedOperationDir(opID string) string {
+	return filepath.Join(c.UnclassifiedDir(), "operations", opID)
+}
+
+// UnclassifiedOperationMDPath returns the path to OPERATION.md for an unclassified operation
+func (c *Commander) UnclassifiedOperationMDPath(opID string) string {
+	return filepath.Join(c.UnclassifiedOperationDir(opID), "OPERATION.md")
 }
 
 // SquadDir returns the path to a squad's runtime directory
@@ -97,9 +102,4 @@ func (c *Commander) OperationDir(squad, opID string) string {
 // OperationMDPath returns the path to OPERATION.md for an operation
 func (c *Commander) OperationMDPath(squad, opID string) string {
 	return filepath.Join(c.OperationDir(squad, opID), "OPERATION.md")
-}
-
-// StagingOperationMDPath returns the path to OPERATION.md in staging
-func (c *Commander) StagingOperationMDPath(opID string) string {
-	return filepath.Join(c.StagingOperationDir(opID), "OPERATION.md")
 }
