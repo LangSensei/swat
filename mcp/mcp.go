@@ -7,6 +7,7 @@ import (
 // Server wraps the Commander as an MCP server
 type Server struct {
 	Commander *commander.Commander
+	Version   string
 }
 
 // NewServer creates a new MCP server

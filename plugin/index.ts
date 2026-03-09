@@ -16,7 +16,8 @@ function json(data: unknown) {
   };
 }
 
-const SWAT_BINARY = resolve(homedir(), ".local", "bin", "swat");
+const DEFAULT_SWAT_BINARY = resolve(homedir(), ".local", "bin", "swat");
+let swatBinary = DEFAULT_SWAT_BINARY;
 
 const TOOLS = [
   {
@@ -116,7 +117,7 @@ async function ensureConnected(logger: any): Promise<Client> {
   if (client) return client;
 
   transport = new StdioClientTransport({
-    command: SWAT_BINARY,
+    command: swatBinary,
   });
 
   client = new Client({
@@ -137,6 +138,10 @@ const plugin = {
 
   register(api: OpenClawPluginApi) {
     const logger = api.logger;
+    const config = api.config?.() ?? {};
+    if (config.binaryPath) {
+      swatBinary = config.binaryPath;
+    }
 
     for (const tool of TOOLS) {
       api.registerTool(
@@ -170,7 +175,7 @@ const plugin = {
       );
     }
 
-    logger.info("SWAT MCP Bridge registered %d tools", TOOLS.length);
+    logger.info(`SWAT MCP Bridge registered ${TOOLS.length} tools`);
   },
 };
 
