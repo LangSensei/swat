@@ -222,8 +222,6 @@ func parseOperationMD(content string) (*Operation, error) {
 			op.Source = val
 		case "pid":
 			fmt.Sscanf(val, "%d", &op.PID)
-		case "notified":
-			// legacy field, ignored
 		case "retry_count":
 			fmt.Sscanf(val, "%d", &op.RetryCount)
 		case "created_at":
