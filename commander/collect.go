@@ -122,16 +122,16 @@ func processAlive(pid int) bool {
 }
 
 // GetUnnotified returns completed/failed operations not yet notified
-func (c *Commander) GetUnnotified() ([]*FullOperation, error) {
+func (c *Commander) GetUnnotified() ([]*Operation, error) {
 	ops, err := c.ListOperations()
 	if err != nil {
 		return nil, err
 	}
-	var result []*FullOperation
+	var result []*Operation
 	for _, op := range ops {
-		full := c.MergeOperation(op)
-		if (full.Status == "completed" || full.Status == "failed") && !full.Notified {
-			result = append(result, full)
+		c.EnrichOperation(op)
+		if (op.Status == "completed" || op.Status == "failed") && !op.Notified {
+			result = append(result, op)
 		}
 	}
 	return result, nil
@@ -156,8 +156,8 @@ func (c *Commander) Status() map[string]interface{} {
 	ops, _ := c.ListOperations()
 	counts := map[string]int{"queued": 0, "active": 0, "completed": 0, "failed": 0}
 	for _, op := range ops {
-		full := c.MergeOperation(op)
-		counts[full.Status]++
+		c.EnrichOperation(op)
+		counts[op.Status]++
 	}
 	unnotified, _ := c.GetUnnotified()
 

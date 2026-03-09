@@ -187,23 +187,24 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 		}
 	}
 
-	var fullOps []*commander.FullOperation
+	var enriched []*commander.Operation
 	for _, op := range ops {
-		fullOps = append(fullOps, s.Commander.MergeOperation(op))
+		s.Commander.EnrichOperation(op)
+		enriched = append(enriched, op)
 	}
 
 	statusFilter, _ := args["status"].(string)
 	if statusFilter != "" {
-		var filtered []*commander.FullOperation
-		for _, op := range fullOps {
+		var filtered []*commander.Operation
+		for _, op := range enriched {
 			if op.Status == statusFilter {
 				filtered = append(filtered, op)
 			}
 		}
-		fullOps = filtered
+		enriched = filtered
 	}
 
-	data, _ := json.MarshalIndent(fullOps, "", "  ")
+	data, _ := json.MarshalIndent(enriched, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}

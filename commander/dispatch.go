@@ -10,7 +10,7 @@ import (
 )
 
 // Dispatch creates a new operation and launches it immediately
-func (c *Commander) Dispatch(brief, details, squad string) (*FullOperation, error) {
+func (c *Commander) Dispatch(brief, details, squad string) (*Operation, error) {
 	now := time.Now().UTC()
 	op := &Operation{
 		OperationID: GenerateOpID(),
@@ -25,8 +25,6 @@ func (c *Commander) Dispatch(brief, details, squad string) (*FullOperation, erro
 		return nil, err
 	}
 
-	full := c.MergeOperation(op)
-
 	// Launch immediately
 	go func() {
 		if err := c.launchOne(op); err != nil {
@@ -35,7 +33,7 @@ func (c *Commander) Dispatch(brief, details, squad string) (*FullOperation, erro
 		}
 	}()
 
-	return full, nil
+	return op, nil
 }
 
 // Cancel marks an operation as failed and kills the process if active
