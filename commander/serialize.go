@@ -54,10 +54,6 @@ func buildOperationFile(op *Operation) string {
 
 	// Body
 	briefTitle := op.Brief
-	if runeCount := len([]rune(briefTitle)); runeCount > 60 {
-		runes := []rune(briefTitle)
-		briefTitle = string(runes[:60]) + "..."
-	}
 	if idx := strings.Index(briefTitle, "\n"); idx > 0 {
 		briefTitle = briefTitle[:idx]
 	}
@@ -66,9 +62,8 @@ func buildOperationFile(op *Operation) string {
 
 	sb.WriteString("## Assignment\n")
 	sb.WriteString("<!-- Commander: full operation description — do not modify -->\n")
-	sb.WriteString(op.Brief + "\n")
 	if op.Details != "" {
-		sb.WriteString("\n" + op.Details + "\n")
+		sb.WriteString(op.Details + "\n")
 	}
 
 	sb.WriteString("\n## Summary\n")
@@ -169,8 +164,14 @@ func parseOperationMD(content string) (*Operation, error) {
 		}
 	}
 
-	// Parse brief from body: content under ## Assignment
-	op.Brief = extractBodySection(body, "Assignment")
+	// Parse brief from body: first H1 title
+	if idx := strings.Index(body, "\n"); idx > 0 {
+		title := strings.TrimSpace(body[:idx])
+		title = strings.TrimPrefix(title, "# ")
+		op.Brief = title
+	}
+	// Parse details from body: content under ## Assignment
+	op.Details = extractBodySection(body, "Assignment")
 
 	if op.OperationID == "" {
 		return nil, fmt.Errorf("missing operation_id in frontmatter")
