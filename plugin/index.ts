@@ -2,8 +2,6 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Type } from "@sinclair/typebox";
-import { spawn } from "child_process";
-
 
 let client: Client | null = null;
 let transport: StdioClientTransport | null = null;
