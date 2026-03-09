@@ -31,14 +31,15 @@ SWAT is controlled entirely through OpenClaw — no CLI needed. Just chat natura
 
 ### Operations
 - `swat_dispatch` — Dispatch a task (auto-classified to the right squad)
-- `swat_list` — List operations with filters (status/since/limit/offset)
+- `swat_ops` — List operations with filters (status/since/limit/offset)
 - `swat_cancel` — Cancel a running operation
 
 ### Squads
 - `swat_squads` — List installed squads
-- `swat_browse` — Browse the marketplace
-- `swat_install` — Install a squad from the marketplace
-- `swat_uninstall` — Uninstall a squad
+- `swat_squad_browse` — Browse the marketplace
+- `swat_squad_install` — Install a squad from the marketplace
+- `swat_squad_uninstall` — Uninstall a squad
+- `swat_squad_update` — Update a squad to the latest marketplace version
 
 ### Schedule
 - `swat_schedule_create` — Create a recurring task (zero LLM cost)

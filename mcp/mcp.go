@@ -7,6 +7,7 @@ import (
 // Server wraps the Commander as an MCP server
 type Server struct {
 	Commander *commander.Commander
+	Version   string
 }
 
 // NewServer creates a new MCP server
@@ -70,7 +71,7 @@ func (s *Server) Tools() []ToolDef {
 		},
 		{
 			Name:        "swat_schedule_create",
-			Description: "Create a scheduled recurring task. Zero LLM cost — pure Go cron triggers dispatch automatically.",
+			Description: "Create a scheduled recurring task. Zero LLM cost.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
@@ -104,7 +105,7 @@ func (s *Server) Tools() []ToolDef {
 		},
 		{
 			Name:        "swat_squad_browse",
-			Description: "List all squads available in the marketplace with install status",
+			Description: "List all squads available in the marketplace",
 			InputSchema: map[string]interface{}{
 				"type":       "object",
 				"properties": map[string]interface{}{},

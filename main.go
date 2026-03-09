@@ -28,7 +28,7 @@ func main() {
 		log.Println("SWAT MCP server starting (no commander loop)...")
 	}
 
-	if err := mcp.Serve(cmdr); err != nil {
+	if err := mcp.Serve(cmdr, version); err != nil {
 		log.Fatalf("MCP server error: %v", err)
 	}
 }

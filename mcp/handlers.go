@@ -49,8 +49,9 @@ type contentBlock struct {
 }
 
 // Serve starts the MCP server on stdin/stdout
-func Serve(cmdr *commander.Commander) error {
+func Serve(cmdr *commander.Commander, version string) error {
 	srv := NewServer(cmdr)
+	srv.Version = version
 	reader := bufio.NewReader(os.Stdin)
 	writer := os.Stdout
 
@@ -91,7 +92,7 @@ func (s *Server) handleRequest(req jsonrpcRequest) *jsonrpcResponse {
 				},
 				"serverInfo": map[string]interface{}{
 					"name":    "swat",
-					"version": "1.0.0",
+					"version": s.Version,
 				},
 			},
 		}

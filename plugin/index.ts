@@ -2,9 +2,6 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { Type } from "@sinclair/typebox";
-import { spawn } from "child_process";
-import { resolve } from "path";
-import { homedir } from "os";
 
 let client: Client | null = null;
 let transport: StdioClientTransport | null = null;
@@ -16,13 +13,13 @@ function json(data: unknown) {
   };
 }
 
-const SWAT_BINARY = resolve(homedir(), ".local", "bin", "swat");
+let swatBinary = "";
 
 const TOOLS = [
   {
     name: "swat_dispatch",
     label: "SWAT Dispatch",
-    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background.",
+    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background. Read the swat skill for dispatch workflow and completion monitoring guidance.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       details: Type.Optional(Type.String({ description: "Additional details" })),
@@ -56,7 +53,7 @@ const TOOLS = [
   {
     name: "swat_schedule_create",
     label: "SWAT Schedule Create",
-    description: "Create a scheduled recurring task. Zero LLM cost.",
+    description: "Create a scheduled recurring task. Zero LLM cost. Read the swat skill for scheduling guidance and completion monitoring setup.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       cron: Type.String({ description: "Cron expression, 5-field: min hour dom month dow" }),
@@ -116,12 +113,12 @@ async function ensureConnected(logger: any): Promise<Client> {
   if (client) return client;
 
   transport = new StdioClientTransport({
-    command: SWAT_BINARY,
+    command: swatBinary,
   });
 
   client = new Client({
     name: "openclaw-swat-bridge",
-    version: "2.0.0",
+    version: "1.0.0",
   });
 
   await client.connect(transport);
@@ -137,6 +134,13 @@ const plugin = {
 
   register(api: OpenClawPluginApi) {
     const logger = api.logger;
+    if (api.pluginConfig?.binaryPath) {
+      swatBinary = api.pluginConfig.binaryPath as string;
+    }
+    if (!swatBinary) {
+      logger.error("SWAT binary path not configured. Run install.sh or set plugins.entries.swat-mcp-bridge.config.binaryPath");
+      return;
+    }
 
     for (const tool of TOOLS) {
       api.registerTool(
@@ -170,7 +174,7 @@ const plugin = {
       );
     }
 
-    logger.info("SWAT MCP Bridge registered %d tools", TOOLS.length);
+    logger.info(`SWAT MCP Bridge registered ${TOOLS.length} tools`);
   },
 };
 
