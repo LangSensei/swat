@@ -187,18 +187,23 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 		}
 	}
 
+	var fullOps []*commander.FullOperation
+	for _, op := range ops {
+		fullOps = append(fullOps, s.Commander.MergeOperation(op))
+	}
+
 	statusFilter, _ := args["status"].(string)
 	if statusFilter != "" {
-		var filtered []*commander.Operation
-		for _, op := range ops {
+		var filtered []*commander.FullOperation
+		for _, op := range fullOps {
 			if op.Status == statusFilter {
 				filtered = append(filtered, op)
 			}
 		}
-		ops = filtered
+		fullOps = filtered
 	}
 
-	data, _ := json.MarshalIndent(ops, "", "  ")
+	data, _ := json.MarshalIndent(fullOps, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}

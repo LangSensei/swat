@@ -10,7 +10,7 @@ import (
 )
 
 // Dispatch creates a new operation and launches it immediately
-func (c *Commander) Dispatch(brief, details, squad string) (*Operation, error) {
+func (c *Commander) Dispatch(brief, details, squad string) (*FullOperation, error) {
 	now := time.Now().UTC()
 	op := &Operation{
 		OperationID: GenerateOpID(),
@@ -25,40 +25,28 @@ func (c *Commander) Dispatch(brief, details, squad string) (*Operation, error) {
 		return nil, err
 	}
 
+	full := c.MergeOperation(op)
+
 	// Launch immediately
 	go func() {
 		if err := c.launchOne(op); err != nil {
-			now := time.Now().UTC()
 			reason := fmt.Sprintf("launch_failed: %v", err)
-			op.Status = "failed"
-			op.FailedAt = &now
-			op.FailureReason = &reason
-			c.SaveOperation(op)
+			c.Tracker.SetFailed(op.OperationID, reason)
 		}
 	}()
 
-	return op, nil
+	return full, nil
 }
 
 // Cancel marks an operation as failed and kills the process if active
 func (c *Commander) Cancel(opID string) error {
-	op, err := c.findOperation(opID)
-	if err != nil {
-		return err
-	}
-	now := time.Now().UTC()
-	reason := "cancelled_by_user"
-
-	if op.Status == "active" && op.PID > 0 {
-		if p, err := os.FindProcess(op.PID); err == nil {
+	// Kill process if tracked
+	if tracked := c.Tracker.Get(opID); tracked != nil && tracked.PID > 0 {
+		if p, err := os.FindProcess(tracked.PID); err == nil {
 			p.Signal(os.Kill)
 		}
 	}
-
-	op.Status = "failed"
-	op.FailedAt = &now
-	op.FailureReason = &reason
-	return c.SaveOperation(op)
+	return c.Tracker.SetFailed(opID, "cancelled_by_user")
 }
 
 // launchOne prepares the operation directory and starts a Copilot CLI process
@@ -88,11 +76,12 @@ func (c *Commander) launchOne(op *Operation) error {
 	}
 
 	now := time.Now().UTC()
-	op.Status = "active"
-	op.PID = cmd.Process.Pid
-	op.DispatchedAt = &now
-
-	if err := c.SaveOperation(op); err != nil {
+	tracked := &TrackedOp{
+		Squad:        op.Squad,
+		PID:          cmd.Process.Pid,
+		DispatchedAt: &now,
+	}
+	if err := c.Tracker.Track(op.OperationID, tracked); err != nil {
 		cmd.Process.Kill()
 		logFile.Close()
 		return err
