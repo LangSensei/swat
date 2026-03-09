@@ -30,17 +30,12 @@ const TOOLS = [
     }),
   },
   {
-    name: "swat_status",
-    label: "SWAT Status",
-    description: "Get SWAT task status and unnotified completions",
-    parameters: Type.Object({}),
-  },
-  {
     name: "swat_list",
     label: "SWAT List",
-    description: "List all SWAT operations",
+    description: "List SWAT operations with optional filters. Returns counts and matching operations.",
     parameters: Type.Object({
       status: Type.Optional(Type.String({ description: "Filter by status (queued/active/completed/failed)" })),
+      since: Type.Optional(Type.String({ description: "Only return terminal ops after this RFC3339 timestamp" })),
     }),
   },
   {
