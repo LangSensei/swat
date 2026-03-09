@@ -1,9 +1,11 @@
 package commander
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 	"strings"
 )
 
@@ -50,4 +52,14 @@ func copyDir(src, dst string) error {
 // execCommand creates an exec.Cmd
 func execCommand(name string, args ...string) *exec.Cmd {
 	return exec.Command(name, args...)
+}
+
+func debugLog(msg string) {
+	home, _ := os.UserHomeDir()
+	f, err := os.OpenFile(filepath.Join(home, ".swat", "debug.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "%s %s\n", time.Now().UTC().Format("15:04:05"), msg)
 }

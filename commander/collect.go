@@ -2,8 +2,8 @@ package commander
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -42,7 +42,9 @@ func (c *Commander) Scan() {
 
 func (c *Commander) handleTracked(opID string, t *TrackedOp) {
 	// Process still running — nothing to do
-	if t.PID > 0 && processAlive(t.PID) {
+	alive := processAlive(t.PID)
+	debugLog(fmt.Sprintf("[scan] op=%s pid=%d alive=%v", opID, t.PID, alive))
+	if t.PID > 0 && alive {
 		if t.DispatchedAt != nil && time.Since(*t.DispatchedAt) > 30*time.Minute {
 			c.RecentFailures++
 		}
@@ -114,11 +116,10 @@ func processAlive(pid int) bool {
 	if pid == 0 {
 		return false
 	}
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return process.Signal(nil) == nil
+	// Use raw syscall instead of os.FindProcess().Signal(nil),
+	// because Go marks the process as "finished" after cmd.Wait() returns,
+	// even if the process is still running (PID still valid in OS).
+	return syscall.Kill(pid, 0) == nil
 }
 
 // GetUnnotified returns completed/failed operations not yet notified
