@@ -8,6 +8,13 @@ REPO="LangSensei/swat-v2"
 SWAT_HOME="$HOME/.swat"
 BIN_DIR="$HOME/.local/bin"
 
+# --- Safety: refuse to run as root ---
+if [[ "$(id -u)" -eq 0 ]]; then
+    echo -e "\033[0;31m[swat]\033[0m Do not run this installer as root or with sudo."
+    echo -e "\033[0;31m[swat]\033[0m Run as your normal user:  curl -fsSL ... | bash"
+    exit 1
+fi
+
 info()  { echo -e "\033[0;36m[swat]\033[0m $*"; }
 ok()    { echo -e "\033[0;32m[swat]\033[0m $*"; }
 err()   { echo -e "\033[0;31m[swat]\033[0m $*" >&2; }
