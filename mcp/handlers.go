@@ -303,9 +303,67 @@ func (s *Server) handleSquads(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleSchedule(args map[string]interface{}) toolResult {
-	// TODO: create schedule entry
-	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: "schedule not yet implemented"}},
+	action, _ := args["action"].(string)
+	if action == "" {
+		action = "create"
+	}
+
+	switch action {
+	case "create":
+		brief, _ := args["brief"].(string)
+		details, _ := args["details"].(string)
+		cronExpr, _ := args["cron"].(string)
+		tz, _ := args["timezone"].(string)
+		name, _ := args["name"].(string)
+
+		sched, err := s.Commander.CreateSchedule(brief, details, cronExpr, tz, name)
+		if err != nil {
+			return toolResult{
+				Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule failed: %v", err)}},
+				IsError: true,
+			}
+		}
+		data, _ := json.MarshalIndent(sched, "", "  ")
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: string(data)}},
+		}
+
+	case "list":
+		schedules, err := s.Commander.ListSchedules()
+		if err != nil {
+			return toolResult{
+				Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
+				IsError: true,
+			}
+		}
+		data, _ := json.MarshalIndent(schedules, "", "  ")
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: string(data)}},
+		}
+
+	case "delete":
+		id, _ := args["id"].(string)
+		if id == "" {
+			return toolResult{
+				Content: []contentBlock{{Type: "text", Text: "id is required for delete"}},
+				IsError: true,
+			}
+		}
+		if err := s.Commander.DeleteSchedule(id); err != nil {
+			return toolResult{
+				Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("delete failed: %v", err)}},
+				IsError: true,
+			}
+		}
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule %s deleted", id)}},
+		}
+
+	default:
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("unknown action: %s (use create/list/delete)", action)}},
+			IsError: true,
+		}
 	}
 }
 

@@ -70,16 +70,19 @@ func (s *Server) Tools() []ToolDef {
 		},
 		{
 			Name:        "swat_schedule",
-			Description: "Create a scheduled task",
+			Description: "Manage scheduled recurring tasks (create/list/delete). Schedules auto-dispatch at cron times with zero LLM cost.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"brief":   map[string]interface{}{"type": "string", "description": "Task description"},
-					"details": map[string]interface{}{"type": "string", "description": "Additional details"},
-					"squad":   map[string]interface{}{"type": "string", "description": "Target squad"},
-					"cron":    map[string]interface{}{"type": "string", "description": "Cron expression"},
+					"action":   map[string]interface{}{"type": "string", "description": "Action: create, list, delete", "enum": []string{"create", "list", "delete"}},
+					"brief":    map[string]interface{}{"type": "string", "description": "Task description (create)"},
+					"details":  map[string]interface{}{"type": "string", "description": "Additional details (create)"},
+					"cron":     map[string]interface{}{"type": "string", "description": "Cron expression, 5-field: min hour dom month dow (create)"},
+					"timezone": map[string]interface{}{"type": "string", "description": "IANA timezone, e.g. Asia/Shanghai (default: UTC)"},
+					"name":     map[string]interface{}{"type": "string", "description": "Human-readable name for the schedule"},
+					"id":       map[string]interface{}{"type": "string", "description": "Schedule ID (delete)"},
 				},
-				"required": []string{"brief", "cron"},
+				"required": []string{"action"},
 			},
 		},
 		{

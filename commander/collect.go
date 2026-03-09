@@ -16,6 +16,7 @@ func (c *Commander) BackgroundLoop(interval time.Duration) {
 	for range ticker.C {
 		c.Iteration++
 		c.Scan()
+		c.CheckDue()
 		if c.ShouldReview() {
 			c.Review()
 		}

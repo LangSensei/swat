@@ -56,12 +56,15 @@ const TOOLS = [
   {
     name: "swat_schedule",
     label: "SWAT Schedule",
-    description: "Create a scheduled task",
+    description: "Manage scheduled recurring tasks (create/list/delete). Zero LLM cost.",
     parameters: Type.Object({
-      brief: Type.String({ description: "Task description" }),
-      cron: Type.String({ description: "Cron expression" }),
-      details: Type.Optional(Type.String({ description: "Additional details" })),
-      squad: Type.Optional(Type.String({ description: "Target squad" })),
+      action: Type.String({ description: "Action: create, list, delete" }),
+      brief: Type.Optional(Type.String({ description: "Task description (create)" })),
+      cron: Type.Optional(Type.String({ description: "Cron expression, 5-field: min hour dom month dow (create)" })),
+      details: Type.Optional(Type.String({ description: "Additional details (create)" })),
+      timezone: Type.Optional(Type.String({ description: "IANA timezone, e.g. Asia/Shanghai (default: UTC)" })),
+      name: Type.Optional(Type.String({ description: "Human-readable name" })),
+      id: Type.Optional(Type.String({ description: "Schedule ID (delete)" })),
     }),
   },
   {

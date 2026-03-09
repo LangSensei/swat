@@ -35,14 +35,16 @@ type Reference struct {
 
 // Schedule represents a recurring task definition
 type Schedule struct {
-	ID        string
-	Brief     string
-	Details   string
-	Squad     string
-	Cron      string
-	NextRun   time.Time
-	Enabled   bool
-	CreatedAt time.Time
+	ID        string     `json:"id"`
+	Name      string     `json:"name,omitempty"`
+	Brief     string     `json:"brief"`
+	Details   string     `json:"details,omitempty"`
+	Cron      string     `json:"cron"`
+	Timezone  string     `json:"timezone,omitempty"`
+	Enabled   bool       `json:"enabled"`
+	CreatedAt time.Time  `json:"created_at"`
+	LastRun   *time.Time `json:"last_run,omitempty"`
+	NextRun   *time.Time `json:"next_run,omitempty"`
 }
 
 // Commander is the core orchestrator
