@@ -26,7 +26,7 @@ if [[ "${1:-}" != "--yes" ]]; then
     echo "  - Blueprints: $SWAT_HOME/blueprints/"
     echo "  - Version:    $SWAT_HOME/.version"
     echo ""
-    warn "Runtime data ($SWAT_HOME/squads/) will be KEPT unless you pass --purge"
+    warn "Runtime data ($SWAT_HOME/squads/, $SWAT_HOME/schedules/) will be KEPT unless you pass --purge"
     echo ""
     read -r -p "Continue? [y/N] " confirm
     if [[ "$confirm" != [yY] ]]; then
@@ -73,6 +73,10 @@ if $PURGE; then
     if [[ -d "$SWAT_HOME/squads" ]]; then
         rm -rf "$SWAT_HOME/squads"
         ok "Purged $SWAT_HOME/squads/"
+    fi
+    if [[ -d "$SWAT_HOME/schedules" ]]; then
+        rm -rf "$SWAT_HOME/schedules"
+        ok "Purged $SWAT_HOME/schedules/"
     fi
     # Remove entire .swat if empty
     rmdir "$SWAT_HOME" 2>/dev/null && ok "Removed $SWAT_HOME/" || true
