@@ -75,26 +75,26 @@ Use `swat_schedules` to view all schedules and `swat_schedule_delete(id)` to rem
   - `offset` — skip first N results (default 0)
   - Results sorted by time descending (most recent first)
 
-## Completion Monitoring (Active-Diff Pattern)
+## Completion Monitoring
 
-After dispatching one or more tasks, set up a **cron job** to detect completions via active-list diffing:
+SWAT tasks run in the background — both manual dispatches and scheduled tasks. To get notified when tasks complete, set up a **persistent** OpenClaw cron job:
 
 ```
 cron(action=add, job={
   name: "swat-monitor",
-  schedule: { kind: "every", everyMs: 120000 },
+  schedule: { kind: "every", everyMs: 300000 },
   sessionTarget: "isolated",
   payload: {
     kind: "agentTurn",
-    message: "You are a SWAT completion monitor. Follow these steps exactly:\n\n1. Read workspace file memory/swat-monitor.json. If it doesn't exist, treat lastActiveIds as [].\n2. Call swat_ops(status=active) to get current active operation IDs.\n3. Compute disappeared = IDs in lastActiveIds that are NOT in current active IDs.\n4. For each disappeared ID, call swat_list to find its details (it will be completed or failed). Send a summary to the user (operation ID, squad, brief, status, summary).\n5. Write memory/swat-monitor.json with lastActiveIds = current active IDs.\n6. If current active count is 0 AND no disappeared IDs, delete this cron job.\n7. If nothing to report, reply NO_REPLY."
+    message: "You are a SWAT completion monitor.\n\n1. Read workspace file memory/swat-monitor.json. If missing, treat lastKnownIds as [].\n2. Call swat_ops(status=completed, limit=10) and swat_ops(status=failed, limit=10) to get recent terminal operations.\n3. Find new completions/failures: IDs present in results but NOT in lastKnownIds.\n4. For each new result, send the user a summary (operation ID, squad, brief, status, key findings).\n5. Update memory/swat-monitor.json with all current terminal IDs (keep last 50 to avoid unbounded growth).\n6. If nothing new, reply NO_REPLY."
   },
   delivery: { mode: "announce" }
 })
 ```
 
-- **Auto-delete**: When active=0 and no new completions detected, the cron deletes itself.
-- **Don't stack**: Only create one monitor cron at a time. Check if one exists before creating another.
-- **Interval**: 2 minutes is a good default. Adjust if the user wants faster/slower updates.
+- **Persistent**: This cron runs continuously (every 5 min), not just after dispatch. It catches both manual and scheduled task completions.
+- **Set up once**: Create this cron after SWAT is installed. Check `cron(action=list)` before creating — don't stack duplicates.
+- **Interval**: 5 minutes is the default. Use 2 minutes if the user wants faster updates.
 
 ## Critical Rules
 
