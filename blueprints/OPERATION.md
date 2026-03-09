@@ -16,7 +16,8 @@ dispatched_at:
 failed_at:
 # filled if status is failed
 failure_reason:
-# filled by classify (Copilot), e.g., ["../20260309-xxxx/"]
+# filled by classify (Copilot)
+# e.g., [{type: "operation", value: "../20260309-xxxx/"}, {type: "url", value: "https://..."}, {type: "email-address", value: "user@example.com"}]
 references: []
 
 # Captain output fields (filled during/after execution)

@@ -23,10 +23,16 @@ type Operation struct {
 	FailedAt      *time.Time `json:"failed_at,omitempty"`
 	FailureReason *string    `json:"failure_reason,omitempty"`
 	Summary       string     `json:"summary,omitempty"`
-	References    []string   `json:"references,omitempty"`
+	References    []Reference `json:"references,omitempty"`
 	// Brief and Details are stored in the markdown body, not frontmatter
 	Brief   string `json:"brief,omitempty"`
 	Details string `json:"details,omitempty"`
+}
+
+// Reference is a typed reference attached to an operation
+type Reference struct {
+	Type  string `json:"type"`  // operation, url, email-address, stock-code, etc.
+	Value string `json:"value"`
 }
 
 // Schedule represents a recurring task definition
@@ -289,11 +295,12 @@ func buildOperationFile(op *Operation) string {
 	writeOptionalTime(&sb, "failed_at", op.FailedAt)
 	sb.WriteString("# filled if status is failed\n")
 	writeOptionalStr(&sb, "failure_reason", op.FailureReason)
-	sb.WriteString("# filled by classify (Copilot), e.g., [\"../20260309-xxxx/\"]\n")
+	sb.WriteString("# filled by classify (Copilot)\n")
+	sb.WriteString("# e.g., [{type: \"operation\", value: \"../20260309-xxxx/\"}, {type: \"url\", value: \"https://...\"}]\n")
 	if len(op.References) > 0 {
 		sb.WriteString("references:\n")
 		for _, ref := range op.References {
-			sb.WriteString(fmt.Sprintf("  - %s\n", ref))
+			sb.WriteString(fmt.Sprintf("  - {type: \"%s\", value: \"%s\"}\n", ref.Type, ref.Value))
 		}
 	} else {
 		sb.WriteString("references: []\n")
