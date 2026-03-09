@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
+	"time"
 
 	"github.com/LangSensei/swat/commander"
 )
@@ -127,8 +129,6 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 	switch params.Name {
 	case "swat_dispatch":
 		return s.handleDispatch(params.Arguments)
-	case "swat_status":
-		return s.handleStatus(params.Arguments)
 	case "swat_list":
 		return s.handleList(params.Arguments)
 	case "swat_cancel":
@@ -170,14 +170,6 @@ func (s *Server) handleDispatch(args map[string]interface{}) toolResult {
 	}
 }
 
-func (s *Server) handleStatus(args map[string]interface{}) toolResult {
-	status := s.Commander.Status()
-	data, _ := json.MarshalIndent(status, "", "  ")
-	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: string(data)}},
-	}
-}
-
 func (s *Server) handleList(args map[string]interface{}) toolResult {
 	ops, err := s.Commander.ListOperations()
 	if err != nil {
@@ -185,6 +177,12 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
 			IsError: true,
 		}
+	}
+
+	// Compute counts before filtering
+	counts := map[string]int{"queued": 0, "active": 0, "completed": 0, "failed": 0}
+	for _, op := range ops {
+		counts[op.Status]++
 	}
 
 	statusFilter, _ := args["status"].(string)
@@ -198,10 +196,69 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 		ops = filtered
 	}
 
-	data, _ := json.MarshalIndent(ops, "", "  ")
+	// Filter by time: only return ops with completed_at or failed_at after "since"
+	sinceStr, _ := args["since"].(string)
+	if sinceStr != "" {
+		if sinceTime, err := time.Parse(time.RFC3339, sinceStr); err == nil {
+			var filtered []*commander.Operation
+			for _, op := range ops {
+				if op.CompletedAt != nil && op.CompletedAt.After(sinceTime) {
+					filtered = append(filtered, op)
+				} else if op.FailedAt != nil && op.FailedAt.After(sinceTime) {
+					filtered = append(filtered, op)
+				} else if op.Status == "active" || op.Status == "queued" {
+					filtered = append(filtered, op) // always include in-flight
+				}
+			}
+			ops = filtered
+		}
+	}
+
+	// Sort by time descending (most recent first)
+	sort.Slice(ops, func(i, j int) bool {
+		return opSortTime(ops[i]).After(opSortTime(ops[j]))
+	})
+
+	// Pagination: offset then limit (default limit=50)
+	offset := 0
+	if v, ok := args["offset"].(float64); ok && int(v) > 0 {
+		offset = int(v)
+	}
+	limit := 50
+	if v, ok := args["limit"].(float64); ok && int(v) > 0 {
+		limit = int(v)
+	}
+	if offset > len(ops) {
+		ops = nil
+	} else {
+		ops = ops[offset:]
+		if limit < len(ops) {
+			ops = ops[:limit]
+		}
+	}
+
+	result := map[string]interface{}{
+		"counts":     counts,
+		"operations": ops,
+	}
+	data, _ := json.MarshalIndent(result, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}
+}
+
+// opSortTime returns the most relevant timestamp for sorting (newest event first)
+func opSortTime(op *commander.Operation) time.Time {
+	if op.CompletedAt != nil {
+		return *op.CompletedAt
+	}
+	if op.FailedAt != nil {
+		return *op.FailedAt
+	}
+	if op.DispatchedAt != nil {
+		return *op.DispatchedAt
+	}
+	return op.CreatedAt
 }
 
 func (s *Server) handleCancel(args map[string]interface{}) toolResult {

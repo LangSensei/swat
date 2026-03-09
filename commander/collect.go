@@ -1,7 +1,6 @@
 package commander
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -101,44 +100,4 @@ func processAlive(pid int) bool {
 	return p.Signal(syscall.Signal(0)) == nil
 }
 
-// GetUnnotified returns completed/failed operations not yet notified
-func (c *Commander) GetUnnotified() ([]*Operation, error) {
-	ops, err := c.ListOperations()
-	if err != nil {
-		return nil, err
-	}
-	var result []*Operation
-	for _, op := range ops {
-		if (op.Status == "completed" || op.Status == "failed") && !op.Notified {
-			result = append(result, op)
-		}
-	}
-	return result, nil
-}
 
-// MarkNotified sets notified=true for an operation
-func (c *Commander) MarkNotified(opID string) error {
-	op, err := c.findOperation(opID)
-	if err != nil {
-		return err
-	}
-	op.Notified = true
-	return c.SaveOperation(op)
-}
-
-// Status returns a summary of all operations
-func (c *Commander) Status() map[string]interface{} {
-	ops, _ := c.ListOperations()
-	counts := map[string]int{"queued": 0, "active": 0, "completed": 0, "failed": 0}
-	for _, op := range ops {
-		counts[op.Status]++
-	}
-	unnotified, _ := c.GetUnnotified()
-
-	return map[string]interface{}{
-		"counts":     counts,
-		"unnotified": unnotified,
-		"iteration":  c.Iteration,
-		"message":    fmt.Sprintf("%d queued, %d active, %d completed, %d failed", counts["queued"], counts["active"], counts["completed"], counts["failed"]),
-	}
-}

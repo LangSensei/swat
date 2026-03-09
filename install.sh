@@ -58,7 +58,7 @@ check_prereqs() {
 
     if ! command -v copilot >/dev/null 2>&1; then
         info "Warning: GitHub Copilot CLI not found. Required for running squads."
-        info "  npm install -g @githubnext/github-copilot-cli"
+        info "  npm install -g @github/copilot"
     fi
 
     # Check gh CLI and auth status
