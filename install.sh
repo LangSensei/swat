@@ -60,6 +60,17 @@ check_prereqs() {
         info "Warning: GitHub Copilot CLI not found. Required for running squads."
         info "  npm install -g @githubnext/github-copilot-cli"
     fi
+
+    # Check gh CLI and auth status
+    if command -v gh >/dev/null 2>&1; then
+        if ! gh auth status &>/dev/null; then
+            info "⚠️  GitHub CLI not authenticated. Run before using SWAT:"
+            info "    gh auth login"
+        fi
+    else
+        info "⚠️  GitHub CLI (gh) not found. Required for Copilot CLI auth."
+        info "    Install: https://cli.github.com"
+    fi
 }
 
 # --- Download & Extract ---

@@ -72,3 +72,9 @@ If SWAT tools are not available, guide the user to install:
 curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.sh | bash
 ```
 Then restart OpenClaw. After that, install a squad: `swat_install("squad-name")`.
+
+Before the first dispatch, verify GitHub auth is set up (required for Copilot CLI):
+```bash
+gh auth status
+```
+If not authenticated, guide the user to run `gh auth login` first.
