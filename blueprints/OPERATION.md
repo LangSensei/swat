@@ -23,13 +23,13 @@ references: []
 # Captain output fields (filled during/after execution)
 # queued → active → completed / failed
 status:
-# Squad-specific output fields
-# Commander appends fields from the squad's MANIFEST.md Output Schema below this line.
-# Captain fills them during the operation.
 # 2-3 sentence summary of outcome
 summary:
 # UTC timestamp when operation completed successfully
 completed_at:
+# Squad-specific output fields
+# Commander appends fields from the squad's MANIFEST.md Output Schema below this line.
+# Captain fills them during the operation.
 ---
 
 # {BRIEF}
