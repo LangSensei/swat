@@ -1,7 +1,7 @@
 {
   "id": "swat-mcp-bridge",
   "name": "SWAT MCP Bridge",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "description": "Bridge between OpenClaw and SWAT Commander MCP server. Spawns SWAT as a long-lived stdio process and registers its tools as native OpenClaw tools.",
   "configSchema": {
     "type": "object",

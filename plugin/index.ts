@@ -118,7 +118,7 @@ async function ensureConnected(logger: any): Promise<Client> {
 
   client = new Client({
     name: "openclaw-swat-bridge",
-    version: "1.1.0",
+    version: "1.0.0",
   });
 
   await client.connect(transport);
