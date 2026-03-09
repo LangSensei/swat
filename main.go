@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/LangSensei/swat/commander"
@@ -9,10 +10,16 @@ import (
 )
 
 func main() {
-	cmdr := commander.New("~/.swat")
-	go cmdr.BackgroundLoop(60 * time.Second)
+	mcpOnly := len(os.Args) > 1 && os.Args[1] == "--mcp-only"
 
-	log.Println("SWAT Commander starting...")
+	cmdr := commander.New("~/.swat")
+	if !mcpOnly {
+		go cmdr.BackgroundLoop(60 * time.Second)
+		log.Println("SWAT Commander starting...")
+	} else {
+		log.Println("SWAT MCP server starting (no commander loop)...")
+	}
+
 	if err := mcp.Serve(cmdr); err != nil {
 		log.Fatalf("MCP server error: %v", err)
 	}
