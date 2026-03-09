@@ -2,6 +2,7 @@ package commander
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -116,10 +117,13 @@ func processAlive(pid int) bool {
 	if pid == 0 {
 		return false
 	}
-	// Use raw syscall instead of os.FindProcess().Signal(nil),
-	// because Go marks the process as "finished" after cmd.Wait() returns,
-	// even if the process is still running (PID still valid in OS).
-	return syscall.Kill(pid, 0) == nil
+	// Use Signal(0) instead of Signal(nil) — Go 1.24's pidfd path
+	// rejects nil as "unsupported signal type", but Signal(0) works correctly.
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return p.Signal(syscall.Signal(0)) == nil
 }
 
 // GetUnnotified returns completed/failed operations not yet notified
