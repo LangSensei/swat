@@ -22,7 +22,7 @@ func (c *Commander) scheduleFile(id string) string {
 }
 
 // CreateSchedule creates a new schedule and persists it
-func (c *Commander) CreateSchedule(brief, details, cronExpr, tz, name string) (*Schedule, error) {
+func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string) (*Schedule, error) {
 	if brief == "" {
 		return nil, fmt.Errorf("brief is required")
 	}
@@ -50,7 +50,6 @@ func (c *Commander) CreateSchedule(brief, details, cronExpr, tz, name string) (*
 
 	sched := &Schedule{
 		ID:        id,
-		Name:      name,
 		Brief:     brief,
 		Details:   details,
 		Cron:      cronExpr,
@@ -118,11 +117,28 @@ func (c *Commander) CheckDue() {
 	}
 
 	now := time.Now().UTC()
+
+	// Build set of schedule IDs with in-flight operations
+	inFlight := make(map[string]bool)
+	ops, _ := c.ListOperations()
+	for _, op := range ops {
+		if op.Status == "queued" || op.Status == "active" {
+			if strings.HasPrefix(op.Source, "schedule/") {
+				schedID := strings.TrimPrefix(op.Source, "schedule/")
+				inFlight[schedID] = true
+			}
+		}
+	}
+
 	for _, s := range schedules {
 		if !s.Enabled || s.NextRun == nil {
 			continue
 		}
 		if s.NextRun.After(now) {
+			continue
+		}
+		// Skip if previous run still in-flight
+		if inFlight[s.ID] {
 			continue
 		}
 
@@ -131,8 +147,8 @@ func (c *Commander) CheckDue() {
 		if err != nil {
 			continue
 		}
-		// Update source to "schedule"
-		op.Source = "schedule"
+		// Update source to schedule/{id}
+		op.Source = "schedule/" + s.ID
 		_ = c.SaveOperation(op)
 
 		// Update schedule: last_run, next_run

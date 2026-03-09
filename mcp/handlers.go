@@ -135,8 +135,12 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 		return s.handleCancel(params.Arguments)
 	case "swat_squads":
 		return s.handleSquads(params.Arguments)
-	case "swat_schedule":
-		return s.handleSchedule(params.Arguments)
+	case "swat_schedule_create":
+		return s.handleScheduleCreate(params.Arguments)
+	case "swat_schedules":
+		return s.handleScheduleList(params.Arguments)
+	case "swat_schedule_delete":
+		return s.handleScheduleDelete(params.Arguments)
 	case "swat_squad_install":
 		return s.handleInstall(params.Arguments)
 	case "swat_squad_uninstall":
@@ -302,68 +306,55 @@ func (s *Server) handleSquads(args map[string]interface{}) toolResult {
 	}
 }
 
-func (s *Server) handleSchedule(args map[string]interface{}) toolResult {
-	action, _ := args["action"].(string)
-	if action == "" {
-		action = "create"
-	}
+func (s *Server) handleScheduleCreate(args map[string]interface{}) toolResult {
+	brief, _ := args["brief"].(string)
+	details, _ := args["details"].(string)
+	cronExpr, _ := args["cron"].(string)
+	tz, _ := args["timezone"].(string)
 
-	switch action {
-	case "create":
-		brief, _ := args["brief"].(string)
-		details, _ := args["details"].(string)
-		cronExpr, _ := args["cron"].(string)
-		tz, _ := args["timezone"].(string)
-		name, _ := args["name"].(string)
-
-		sched, err := s.Commander.CreateSchedule(brief, details, cronExpr, tz, name)
-		if err != nil {
-			return toolResult{
-				Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule failed: %v", err)}},
-				IsError: true,
-			}
-		}
-		data, _ := json.MarshalIndent(sched, "", "  ")
+	sched, err := s.Commander.CreateSchedule(brief, details, cronExpr, tz)
+	if err != nil {
 		return toolResult{
-			Content: []contentBlock{{Type: "text", Text: string(data)}},
-		}
-
-	case "list":
-		schedules, err := s.Commander.ListSchedules()
-		if err != nil {
-			return toolResult{
-				Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
-				IsError: true,
-			}
-		}
-		data, _ := json.MarshalIndent(schedules, "", "  ")
-		return toolResult{
-			Content: []contentBlock{{Type: "text", Text: string(data)}},
-		}
-
-	case "delete":
-		id, _ := args["id"].(string)
-		if id == "" {
-			return toolResult{
-				Content: []contentBlock{{Type: "text", Text: "id is required for delete"}},
-				IsError: true,
-			}
-		}
-		if err := s.Commander.DeleteSchedule(id); err != nil {
-			return toolResult{
-				Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("delete failed: %v", err)}},
-				IsError: true,
-			}
-		}
-		return toolResult{
-			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule %s deleted", id)}},
-		}
-
-	default:
-		return toolResult{
-			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("unknown action: %s (use create/list/delete)", action)}},
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule failed: %v", err)}},
 			IsError: true,
 		}
+	}
+	data, _ := json.MarshalIndent(sched, "", "  ")
+	return toolResult{
+		Content: []contentBlock{{Type: "text", Text: string(data)}},
+	}
+}
+
+func (s *Server) handleScheduleList(args map[string]interface{}) toolResult {
+	schedules, err := s.Commander.ListSchedules()
+	if err != nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
+			IsError: true,
+		}
+	}
+	data, _ := json.MarshalIndent(schedules, "", "  ")
+	return toolResult{
+		Content: []contentBlock{{Type: "text", Text: string(data)}},
+	}
+}
+
+func (s *Server) handleScheduleDelete(args map[string]interface{}) toolResult {
+	id, _ := args["id"].(string)
+	if id == "" {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: "id is required"}},
+			IsError: true,
+		}
+	}
+	if err := s.Commander.DeleteSchedule(id); err != nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("delete failed: %v", err)}},
+			IsError: true,
+		}
+	}
+	return toolResult{
+		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule %s deleted", id)}},
 	}
 }
 

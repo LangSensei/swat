@@ -36,7 +36,6 @@ type Reference struct {
 // Schedule represents a recurring task definition
 type Schedule struct {
 	ID        string     `json:"id"`
-	Name      string     `json:"name,omitempty"`
 	Brief     string     `json:"brief"`
 	Details   string     `json:"details,omitempty"`
 	Cron      string     `json:"cron"`

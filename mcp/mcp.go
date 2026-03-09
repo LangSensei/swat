@@ -69,20 +69,36 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_schedule",
-			Description: "Manage scheduled recurring tasks (create/list/delete). Schedules auto-dispatch at cron times with zero LLM cost.",
+			Name:        "swat_schedule_create",
+			Description: "Create a scheduled recurring task. Zero LLM cost — pure Go cron triggers dispatch automatically.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"action":   map[string]interface{}{"type": "string", "description": "Action: create, list, delete", "enum": []string{"create", "list", "delete"}},
-					"brief":    map[string]interface{}{"type": "string", "description": "Task description (create)"},
-					"details":  map[string]interface{}{"type": "string", "description": "Additional details (create)"},
-					"cron":     map[string]interface{}{"type": "string", "description": "Cron expression, 5-field: min hour dom month dow (create)"},
+					"brief":    map[string]interface{}{"type": "string", "description": "Task description"},
+					"details":  map[string]interface{}{"type": "string", "description": "Additional details"},
+					"cron":     map[string]interface{}{"type": "string", "description": "Cron expression, 5-field: min hour dom month dow"},
 					"timezone": map[string]interface{}{"type": "string", "description": "IANA timezone, e.g. Asia/Shanghai (default: UTC)"},
-					"name":     map[string]interface{}{"type": "string", "description": "Human-readable name for the schedule"},
-					"id":       map[string]interface{}{"type": "string", "description": "Schedule ID (delete)"},
 				},
-				"required": []string{"action"},
+				"required": []string{"brief", "cron"},
+			},
+		},
+		{
+			Name:        "swat_schedules",
+			Description: "List all scheduled tasks with next run times",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        "swat_schedule_delete",
+			Description: "Delete a scheduled task",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"id": map[string]interface{}{"type": "string", "description": "Schedule ID"},
+				},
+				"required": []string{"id"},
 			},
 		},
 		{
