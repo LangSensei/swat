@@ -103,6 +103,50 @@ func (c *Commander) Install(squad string) error {
 	return nil
 }
 
+// Update re-downloads a squad and its dependencies from the marketplace
+func (c *Commander) Update(squad string) error {
+	bpDir := filepath.Join(c.SwatRoot, "blueprints")
+	squadDir := filepath.Join(bpDir, "squads", squad)
+
+	if !fileExists(filepath.Join(squadDir, "MANIFEST.md")) {
+		return fmt.Errorf("squad %q is not installed", squad)
+	}
+
+	// Re-download squad (overwrite existing)
+	if err := os.RemoveAll(squadDir); err != nil {
+		return fmt.Errorf("remove old squad %q: %w", squad, err)
+	}
+	if err := ghDownloadDir("squads/"+squad, squadDir); err != nil {
+		return fmt.Errorf("download squad %q: %w", squad, err)
+	}
+
+	// Resolve and update all dependencies
+	allSkills := c.resolveDependencies(squad)
+	allMCPs := c.resolveMCPDependencies(squad)
+
+	for _, skill := range allSkills {
+		destSkill := filepath.Join(bpDir, "skills", skill)
+		os.RemoveAll(destSkill) // remove old version
+		if err := ghDownloadDir("skills/"+skill, destSkill); err != nil {
+			return fmt.Errorf("download skill %q: %w", skill, err)
+		}
+	}
+
+	for _, mcp := range allMCPs {
+		destMCP := filepath.Join(bpDir, "mcps", mcp+".json")
+		data, err := ghGetFile("mcps/" + mcp + ".json")
+		if err != nil {
+			return fmt.Errorf("download MCP %q: %w", mcp, err)
+		}
+		os.MkdirAll(filepath.Join(bpDir, "mcps"), 0755)
+		if err := os.WriteFile(destMCP, data, 0644); err != nil {
+			return fmt.Errorf("write MCP %q: %w", mcp, err)
+		}
+	}
+
+	return nil
+}
+
 // Uninstall removes a squad blueprint and cleans up orphaned dependencies
 func (c *Commander) Uninstall(squad string, purge bool) error {
 	bpDir := filepath.Join(c.SwatRoot, "blueprints")

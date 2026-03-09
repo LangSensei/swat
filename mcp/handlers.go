@@ -129,7 +129,7 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 	switch params.Name {
 	case "swat_dispatch":
 		return s.handleDispatch(params.Arguments)
-	case "swat_list":
+	case "swat_ops":
 		return s.handleList(params.Arguments)
 	case "swat_cancel":
 		return s.handleCancel(params.Arguments)
@@ -137,12 +137,14 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 		return s.handleSquads(params.Arguments)
 	case "swat_schedule":
 		return s.handleSchedule(params.Arguments)
-	case "swat_install":
+	case "swat_squad_install":
 		return s.handleInstall(params.Arguments)
-	case "swat_uninstall":
+	case "swat_squad_uninstall":
 		return s.handleUninstall(params.Arguments)
-	case "swat_browse":
+	case "swat_squad_browse":
 		return s.handleBrowse(params.Arguments)
+	case "swat_squad_update":
+		return s.handleUpdate(params.Arguments)
 	default:
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("unknown tool: %s", params.Name)}},
@@ -372,6 +374,27 @@ func (s *Server) handleBrowse(args map[string]interface{}) toolResult {
 	data, _ := json.MarshalIndent(results, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
+	}
+}
+
+func (s *Server) handleUpdate(args map[string]interface{}) toolResult {
+	squad, _ := args["squad"].(string)
+	if squad == "" {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: "squad name is required"}},
+			IsError: true,
+		}
+	}
+
+	if err := s.Commander.Update(squad); err != nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("update failed: %v", err)}},
+			IsError: true,
+		}
+	}
+
+	return toolResult{
+		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("squad %q updated to latest version", squad)}},
 	}
 }
 

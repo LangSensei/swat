@@ -4,29 +4,39 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 
 ## Tools
 
+### Operations
 | Tool | Purpose |
 |---|---|
 | `swat_dispatch` | Send a task to a squad |
-| `swat_list` | List operations (supports status/since filters), returns counts |
-| `swat_squads` | List installed squads |
+| `swat_ops` | List operations (supports status/since/limit/offset filters), returns counts |
 | `swat_cancel` | Cancel a running operation |
+
+### Squads
+| Tool | Purpose |
+|---|---|
+| `swat_squads` | List installed squads |
+| `swat_squad_browse` | List squads available in the marketplace |
+| `swat_squad_install` | Install a squad from the marketplace |
+| `swat_squad_uninstall` | Uninstall a squad and clean up dependencies |
+| `swat_squad_update` | Update an installed squad to the latest version |
+
+### Schedule
+| Tool | Purpose |
+|---|---|
 | `swat_schedule` | Create a scheduled/recurring task |
-| `swat_browse` | List squads available in the marketplace |
-| `swat_install` | Install a squad from the marketplace |
-| `swat_uninstall` | Uninstall a squad and clean up dependencies |
 
 ## How to Dispatch
 
-1. **Pick a squad** — Call `swat_squads` to see installed squads. If none fit, use `swat_browse` + `swat_install`.
+1. **Pick a squad** — Call `swat_squads` to see installed squads. If none fit, use `swat_squad_browse` + `swat_squad_install`.
 2. **Dispatch** — `swat_dispatch(brief, squad)`. Returns an operation ID immediately.
 3. **Tell the user** — Confirm the task is dispatched and which squad is on it.
 4. **Move on** — Do NOT wait, poll, or sleep. The squad works in the background.
 
 ## Checking Results
 
-- Call `swat_list` **only when the user asks** about a task, or when you have a natural reason to check (e.g., heartbeat).
+- Call `swat_ops` **only when the user asks** about a task, or when you have a natural reason to check (e.g., heartbeat).
 - **Never** use `sleep`, polling loops, or repeated `exec` calls to wait for completion. This blocks the main session and makes you unresponsive.
-- `swat_list` returns counts + operations. Filters:
+- `swat_ops` returns counts + operations. Filters:
   - `status` — `queued`, `active`, `completed`, `failed`
   - `since` — RFC3339 timestamp (e.g. `2026-03-09T04:00:00Z`), only returns terminal ops after this time; active/queued always included
   - `limit` — max results (default 50)
@@ -44,7 +54,7 @@ cron(action=add, job={
   sessionTarget: "isolated",
   payload: {
     kind: "agentTurn",
-    message: "You are a SWAT completion monitor. Follow these steps exactly:\n\n1. Read workspace file memory/swat-monitor.json. If it doesn't exist, treat lastActiveIds as [].\n2. Call swat_list(status=active) to get current active operation IDs.\n3. Compute disappeared = IDs in lastActiveIds that are NOT in current active IDs.\n4. For each disappeared ID, call swat_list to find its details (it will be completed or failed). Send a summary to the user (operation ID, squad, brief, status, summary).\n5. Write memory/swat-monitor.json with lastActiveIds = current active IDs.\n6. If current active count is 0 AND no disappeared IDs, delete this cron job.\n7. If nothing to report, reply NO_REPLY."
+    message: "You are a SWAT completion monitor. Follow these steps exactly:\n\n1. Read workspace file memory/swat-monitor.json. If it doesn't exist, treat lastActiveIds as [].\n2. Call swat_ops(status=active) to get current active operation IDs.\n3. Compute disappeared = IDs in lastActiveIds that are NOT in current active IDs.\n4. For each disappeared ID, call swat_ops to find its details (it will be completed or failed). Send a summary to the user (operation ID, squad, brief, status, summary).\n5. Write memory/swat-monitor.json with lastActiveIds = current active IDs.\n6. If current active count is 0 AND no disappeared IDs, delete this cron job.\n7. If nothing to report, reply NO_REPLY."
   },
   delivery: { mode: "announce" }
 })
@@ -64,9 +74,10 @@ cron(action=add, job={
 
 ## Marketplace
 
-- `swat_browse` — See what's available to install (fetches from GitHub, no clone needed).
-- `swat_install(squad)` — Downloads squad + resolves dependencies automatically.
-- `swat_uninstall(squad)` — Removes squad blueprint + cleans up orphaned dependencies.
+- `swat_squad_browse` — See what's available to install (fetches from GitHub, no clone needed).
+- `swat_squad_install(squad)` — Downloads squad + resolves dependencies automatically.
+- `swat_squad_uninstall(squad)` — Removes squad blueprint + cleans up orphaned dependencies.
+- `swat_squad_update(squad)` — Re-downloads squad + dependencies to latest version.
 
 ## First Run
 
@@ -74,7 +85,7 @@ If SWAT tools are not available, guide the user to install:
 ```
 curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.sh | bash
 ```
-Then restart OpenClaw. After that, install a squad: `swat_install("squad-name")`.
+Then restart OpenClaw. After that, install a squad: `swat_squad_install("squad-name")`.
 
 Before the first dispatch, verify GitHub auth is set up (required for Copilot CLI):
 ```bash

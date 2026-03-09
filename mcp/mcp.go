@@ -38,7 +38,7 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_list",
+			Name:        "swat_ops",
 			Description: "List SWAT operations with optional filters. Returns counts and matching operations.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
@@ -84,7 +84,15 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_install",
+			Name:        "swat_squad_browse",
+			Description: "List all squads available in the marketplace with install status",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        "swat_squad_install",
 			Description: "Install a squad from the SWAT marketplace (auto-resolves skill and MCP dependencies)",
 			InputSchema: map[string]interface{}{
 				"type": "object",
@@ -95,7 +103,7 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_uninstall",
+			Name:        "swat_squad_uninstall",
 			Description: "Uninstall a squad and clean up orphaned dependencies",
 			InputSchema: map[string]interface{}{
 				"type": "object",
@@ -107,11 +115,14 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_browse",
-			Description: "List all squads available in the marketplace with install status",
+			Name:        "swat_squad_update",
+			Description: "Update an installed squad to the latest marketplace version",
 			InputSchema: map[string]interface{}{
-				"type":       "object",
-				"properties": map[string]interface{}{},
+				"type": "object",
+				"properties": map[string]interface{}{
+					"squad": map[string]interface{}{"type": "string", "description": "Squad name to update"},
+				},
+				"required": []string{"squad"},
 			},
 		},
 	}

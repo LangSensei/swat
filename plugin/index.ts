@@ -30,8 +30,8 @@ const TOOLS = [
     }),
   },
   {
-    name: "swat_list",
-    label: "SWAT List",
+    name: "swat_ops",
+    label: "SWAT Operations",
     description: "List SWAT operations with optional filters. Returns counts and matching operations.",
     parameters: Type.Object({
       status: Type.Optional(Type.String({ description: "Filter by status (queued/active/completed/failed)" })),
@@ -66,26 +66,34 @@ const TOOLS = [
     }),
   },
   {
-    name: "swat_browse",
-    label: "SWAT Browse",
+    name: "swat_squad_browse",
+    label: "SWAT Squad Browse",
     description: "List all squads available in the marketplace",
     parameters: Type.Object({}),
   },
   {
-    name: "swat_install",
-    label: "SWAT Install",
+    name: "swat_squad_install",
+    label: "SWAT Squad Install",
     description: "Install a squad from the marketplace",
     parameters: Type.Object({
       squad: Type.String({ description: "Squad name to install" }),
     }),
   },
   {
-    name: "swat_uninstall",
-    label: "SWAT Uninstall",
+    name: "swat_squad_uninstall",
+    label: "SWAT Squad Uninstall",
     description: "Uninstall a squad and clean up orphaned dependencies",
     parameters: Type.Object({
       squad: Type.String({ description: "Squad name to uninstall" }),
       purge: Type.Optional(Type.Boolean({ description: "Also delete runtime data (default: false)" })),
+    }),
+  },
+  {
+    name: "swat_squad_update",
+    label: "SWAT Squad Update",
+    description: "Update an installed squad to the latest marketplace version",
+    parameters: Type.Object({
+      squad: Type.String({ description: "Squad name to update" }),
     }),
   },
 ];
