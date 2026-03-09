@@ -29,12 +29,12 @@ summary:
 completed_at:
 ---
 
-# {BRIEF_TITLE}
+# {BRIEF}
 <!-- Commander: extracted from brief — do not modify -->
 
 ## Assignment
 <!-- Commander: full operation description — do not modify -->
-{DESCRIPTION}
+{DETAILS}
 
 ## Summary
 <!-- Captain: write a rich summary of findings and outcome -->
