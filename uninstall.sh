@@ -78,6 +78,10 @@ if $PURGE; then
         rm -rf "$SWAT_HOME/schedules"
         ok "Purged $SWAT_HOME/schedules/"
     fi
+    if [[ -d "$SWAT_HOME/repos" ]]; then
+        rm -rf "$SWAT_HOME/repos"
+        ok "Purged $SWAT_HOME/repos/"
+    fi
     # Remove entire .swat if empty
     rmdir "$SWAT_HOME" 2>/dev/null && ok "Removed $SWAT_HOME/" || true
 else

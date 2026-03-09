@@ -198,6 +198,35 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	if err != nil {
 		return fmt.Errorf("read manifest for squad %q: %w", op.Squad, err)
 	}
+	manifestStr := string(manifest)
+
+	// If manifest specifies a repo, set up worktree as operation dir
+	repoURL := parseManifestRepo(manifestStr)
+	if repoURL != "" {
+		repoName := repoNameFromURL(repoURL)
+		repoDir, err := c.ensureRepo(repoURL, repoName)
+		if err != nil {
+			return fmt.Errorf("ensure repo %q: %w", repoURL, err)
+		}
+		branchName := "swat/" + op.OperationID
+		// Save OPERATION.md content before worktree replaces the dir
+		opMDPath := filepath.Join(opDir, "OPERATION.md")
+		opMDData, _ := os.ReadFile(opMDPath)
+		// Remove the dir so git worktree can create it fresh
+		os.RemoveAll(opDir)
+		if err := c.addWorktree(repoDir, opDir, branchName); err != nil {
+			// Restore dir on failure
+			os.MkdirAll(opDir, 0755)
+			if opMDData != nil {
+				os.WriteFile(opMDPath, opMDData, 0644)
+			}
+			return fmt.Errorf("add worktree: %w", err)
+		}
+		// Restore OPERATION.md into worktree
+		if opMDData != nil {
+			os.WriteFile(opMDPath, opMDData, 0644)
+		}
+	}
 
 	// Read protocol template
 	protocol, err := os.ReadFile(filepath.Join(frameworkDir, "PROTOCOL.md"))
@@ -206,7 +235,7 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	}
 
 	// Assemble and write AGENTS.md
-	agentsMD := assembleAgentsMD(string(manifest), string(protocol), op.Squad)
+	agentsMD := assembleAgentsMD(manifestStr, string(protocol), op.Squad)
 	if err := os.WriteFile(filepath.Join(opDir, "AGENTS.md"), []byte(agentsMD), 0644); err != nil {
 		return fmt.Errorf("write AGENTS.md: %w", err)
 	}
