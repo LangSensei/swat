@@ -8,6 +8,13 @@ REPO="LangSensei/swat-v2"
 SWAT_HOME="$HOME/.swat"
 BIN_DIR="$HOME/.local/bin"
 
+# --- Safety: refuse to run as root ---
+if [[ "$(id -u)" -eq 0 ]]; then
+    echo -e "\033[0;31m[swat]\033[0m Do not run this installer as root or with sudo."
+    echo -e "\033[0;31m[swat]\033[0m Run as your normal user:  curl -fsSL ... | bash"
+    exit 1
+fi
+
 info()  { echo -e "\033[0;36m[swat]\033[0m $*"; }
 ok()    { echo -e "\033[0;32m[swat]\033[0m $*"; }
 err()   { echo -e "\033[0;31m[swat]\033[0m $*" >&2; }
@@ -52,6 +59,17 @@ check_prereqs() {
     if ! command -v copilot >/dev/null 2>&1; then
         info "Warning: GitHub Copilot CLI not found. Required for running squads."
         info "  npm install -g @githubnext/github-copilot-cli"
+    fi
+
+    # Check gh CLI and auth status
+    if command -v gh >/dev/null 2>&1; then
+        if ! gh auth status &>/dev/null; then
+            info "⚠️  GitHub CLI not authenticated. Run before using SWAT:"
+            info "    gh auth login"
+        fi
+    else
+        info "⚠️  GitHub CLI (gh) not found. Required for Copilot CLI auth."
+        info "    Install: https://cli.github.com"
     fi
 }
 

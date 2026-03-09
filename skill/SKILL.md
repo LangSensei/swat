@@ -30,6 +30,27 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 - `swat_status` returns unnotified completions. Summarize the result to the user.
 - `swat_list` shows all operations if you need the full picture.
 
+## Completion Monitoring
+
+After dispatching one or more tasks, set up a **cron job** to poll for completions:
+
+```
+cron(action=add, job={
+  name: "swat-monitor",
+  schedule: { kind: "every", everyMs: 120000 },
+  sessionTarget: "isolated",
+  payload: {
+    kind: "agentTurn",
+    message: "Call swat_status. If there are unnotified results, summarize each one (operation ID, squad, brief, status, summary) and send to the user. Then call swat_list to mark them seen. If no unnotified results, reply NO_REPLY."
+  },
+  delivery: { mode: "announce" }
+})
+```
+
+- **Auto-delete**: When all dispatched tasks are done (no active operations), delete the cron job.
+- **Don't stack**: Only create one monitor cron at a time. Check if one exists before creating another.
+- **Interval**: 2 minutes is a good default. Adjust if the user wants faster/slower updates.
+
 ## Critical Rules
 
 1. **Fire and forget** — After dispatch, immediately return control to the user. Do not monitor, poll, or block.
@@ -51,3 +72,9 @@ If SWAT tools are not available, guide the user to install:
 curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.sh | bash
 ```
 Then restart OpenClaw. After that, install a squad: `swat_install("squad-name")`.
+
+Before the first dispatch, verify GitHub auth is set up (required for Copilot CLI):
+```bash
+gh auth status
+```
+If not authenticated, guide the user to run `gh auth login` first.
