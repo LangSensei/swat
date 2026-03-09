@@ -219,8 +219,11 @@ register_plugin() {
             cfg.plugins.load.paths.push('$plugin_path');
         }
 
-        // Enable plugin
-        cfg.plugins.entries['swat-mcp-bridge'] = { enabled: true };
+        // Enable plugin with binary path
+        cfg.plugins.entries['swat-mcp-bridge'] = {
+            enabled: true,
+            config: { binaryPath: '$BIN_DIR/swat' }
+        };
 
         fs.writeFileSync('$oc_config', JSON.stringify(cfg, null, 2) + '\n');
     " 2>/dev/null; then
