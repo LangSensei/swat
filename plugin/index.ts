@@ -19,7 +19,7 @@ const TOOLS = [
   {
     name: "swat_dispatch",
     label: "SWAT Dispatch",
-    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified — you do NOT pick a squad. Returns immediately; task runs in background. IMPORTANT: Fire and forget — tell the user the task is dispatched, then move on. Do NOT poll, sleep, or wait for completion. Multiple tasks can run in parallel.",
+    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified — you do NOT pick a squad. Returns immediately; task runs in background. IMPORTANT: After dispatching, (1) tell the user the task is dispatched, (2) set up an OpenClaw cron job to periodically check swat_ops for completions (active-diff pattern: track active IDs, detect disappeared ones, report results, auto-delete cron when no active tasks remain), (3) move on. Do NOT poll or sleep in the main session. Multiple tasks can run in parallel. Note: scheduled tasks may also complete in the background — check swat_ops for recent completions when relevant.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       details: Type.Optional(Type.String({ description: "Additional details" })),
