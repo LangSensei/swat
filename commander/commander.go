@@ -11,22 +11,27 @@ import (
 )
 
 // Operation represents a task parsed from OPERATION.md frontmatter.
-// This is the Captain-owned file — Commander only writes it at creation time.
+// Commander writes it at creation and at finalization (after process exits).
+// Captain owns it during execution.
 type Operation struct {
-	OperationID string    `json:"operation_id"`
-	Squad       string    `json:"squad"`
-	Brief       string    `json:"brief"`
-	Details     string    `json:"details,omitempty"`
-	Status      string    `json:"status"`
-	Source      string    `json:"source"`
-	CreatedAt   time.Time `json:"created_at"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	Summary     string    `json:"summary,omitempty"`
-	References  string    `json:"references,omitempty"`
+	OperationID   string     `json:"operation_id"`
+	Squad         string     `json:"squad"`
+	Brief         string     `json:"brief"`
+	Details       string     `json:"details,omitempty"`
+	Status        string     `json:"status"`
+	Source        string     `json:"source"`
+	CreatedAt     time.Time  `json:"created_at"`
+	DispatchedAt  *time.Time `json:"dispatched_at,omitempty"`
+	CompletedAt   *time.Time `json:"completed_at,omitempty"`
+	FailedAt      *time.Time `json:"failed_at,omitempty"`
+	FailureReason *string    `json:"failure_reason,omitempty"`
+	Summary       string     `json:"summary,omitempty"`
+	Notified      bool       `json:"notified"`
 }
 
 // FullOperation merges Operation (from OPERATION.md) with TrackedOp (from dispatched.json)
-// for external-facing responses (MCP status, list, etc.)
+// for external-facing responses. When tracker entry exists, operation is in-flight.
+// When tracker entry is gone, all data is in OPERATION.md.
 type FullOperation struct {
 	OperationID   string     `json:"operation_id"`
 	Squad         string     `json:"squad"`
@@ -163,8 +168,12 @@ func buildOperationFile(op *Operation) string {
 	sb.WriteString(fmt.Sprintf("brief: %s\n", op.Brief))
 	sb.WriteString(fmt.Sprintf("status: %s\n", op.Status))
 	sb.WriteString(fmt.Sprintf("source: %s\n", op.Source))
+	sb.WriteString(fmt.Sprintf("notified: %v\n", op.Notified))
 	sb.WriteString(fmt.Sprintf("created_at: %s\n", op.CreatedAt.Format(time.RFC3339)))
+	writeOptionalTime(&sb, "dispatched_at", op.DispatchedAt)
 	writeOptionalTime(&sb, "completed_at", op.CompletedAt)
+	writeOptionalTime(&sb, "failed_at", op.FailedAt)
+	writeOptionalStr(&sb, "failure_reason", op.FailureReason)
 	writeOptionalStr(&sb, "summary", nilIfEmpty(op.Summary))
 	sb.WriteString("references: []\n")
 	sb.WriteString("---\n\n")
@@ -232,13 +241,27 @@ func parseOperationMD(content string) (*Operation, error) {
 			op.Status = val
 		case "source":
 			op.Source = val
+		case "notified":
+			op.Notified = val == "true"
 		case "created_at":
 			if t, err := time.Parse(time.RFC3339, val); err == nil {
 				op.CreatedAt = t
 			}
+		case "dispatched_at":
+			if t, err := time.Parse(time.RFC3339, val); err == nil {
+				op.DispatchedAt = &t
+			}
 		case "completed_at":
 			if t, err := time.Parse(time.RFC3339, val); err == nil {
 				op.CompletedAt = &t
+			}
+		case "failed_at":
+			if t, err := time.Parse(time.RFC3339, val); err == nil {
+				op.FailedAt = &t
+			}
+		case "failure_reason":
+			if val != "" {
+				op.FailureReason = &val
 			}
 		case "summary":
 			op.Summary = val
@@ -250,31 +273,35 @@ func parseOperationMD(content string) (*Operation, error) {
 	return op, nil
 }
 
-// MergeOperation combines OPERATION.md + tracker into a FullOperation for external APIs
+// MergeOperation combines OPERATION.md + tracker into a FullOperation for external APIs.
+// If tracker entry exists (in-flight), use tracker for PID-related fields.
+// If tracker entry is gone (finalized), all data is in OPERATION.md.
 func (c *Commander) MergeOperation(op *Operation) *FullOperation {
 	full := &FullOperation{
-		OperationID: op.OperationID,
-		Squad:       op.Squad,
-		Brief:       op.Brief,
-		Status:      op.Status,
-		Source:      op.Source,
-		CreatedAt:   op.CreatedAt,
-		CompletedAt: op.CompletedAt,
-		Summary:     op.Summary,
+		OperationID:   op.OperationID,
+		Squad:         op.Squad,
+		Brief:         op.Brief,
+		Status:        op.Status,
+		Source:        op.Source,
+		Notified:      op.Notified,
+		CreatedAt:     op.CreatedAt,
+		DispatchedAt:  op.DispatchedAt,
+		CompletedAt:   op.CompletedAt,
+		FailedAt:      op.FailedAt,
+		FailureReason: op.FailureReason,
+		Summary:       op.Summary,
 	}
+	// Override with live tracker data if operation is still in-flight
 	if tracked := c.Tracker.Get(op.OperationID); tracked != nil {
-		full.Notified = tracked.Notified
 		full.RetryCount = tracked.RetryCount
 		full.DispatchedAt = tracked.DispatchedAt
-		full.FailedAt = tracked.FailedAt
-		full.FailureReason = tracked.FailureReason
-		// If tracker says failed but Captain wrote completed, trust Captain
-		if op.Status == "completed" && tracked.FailedAt != nil {
-			full.Status = "completed"
+		if tracked.PID > 0 && processAlive(tracked.PID) {
+			full.Status = "active"
 		}
-		// If process exited and Captain didn't complete, use tracker's failed status
-		if op.Status != "completed" && tracked.FailedAt != nil {
+		if tracked.FailedAt != nil {
 			full.Status = "failed"
+			full.FailedAt = tracked.FailedAt
+			full.FailureReason = tracked.FailureReason
 		}
 	}
 	return full

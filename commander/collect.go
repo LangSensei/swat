@@ -55,17 +55,39 @@ func (c *Commander) handleTracked(opID string, t *TrackedOp) {
 	opCompleted := fileContains(c.OperationMDPath(t.Squad, opID), "status: completed")
 
 	if reportExists && opCompleted {
-		// Read OPERATION.md for summary
-		if op, err := c.LoadOperation(t.Squad, opID); err == nil {
-			t.PID = 0
-			c.Tracker.Save()
-			_ = op // summary is in OPERATION.md, available via MergeOperation
-		}
+		// Finalize: write tracker info back to OPERATION.md, then clean tracker
+		c.finalizeOperation(opID, t, "completed", nil)
 	} else {
 		reason := "process_exited_without_completion"
-		c.Tracker.SetFailed(opID, reason)
+		c.finalizeOperation(opID, t, "failed", &reason)
 		c.RecentFailures++
 	}
+}
+
+// finalizeOperation writes tracker state back into OPERATION.md and removes from tracker.
+// Safe because the process has exited — Captain is no longer writing.
+func (c *Commander) finalizeOperation(opID string, t *TrackedOp, status string, failReason *string) {
+	op, err := c.LoadOperation(t.Squad, opID)
+	if err != nil {
+		return
+	}
+
+	// Write Commander-tracked fields into OPERATION.md
+	now := time.Now().UTC()
+	op.DispatchedAt = t.DispatchedAt
+	op.FailedAt = t.FailedAt
+	op.FailureReason = t.FailureReason
+
+	if status == "completed" {
+		op.CompletedAt = &now
+	} else if status == "failed" {
+		op.Status = "failed"
+		op.FailedAt = &now
+		op.FailureReason = failReason
+	}
+
+	c.SaveOperation(op)
+	c.Tracker.Remove(opID)
 }
 
 // ShouldReview determines if LLM review is needed
@@ -115,9 +137,18 @@ func (c *Commander) GetUnnotified() ([]*FullOperation, error) {
 	return result, nil
 }
 
-// MarkNotified sets notified=true for an operation in the tracker
+// MarkNotified sets notified=true. Writes to tracker if in-flight, otherwise to OPERATION.md.
 func (c *Commander) MarkNotified(opID string) error {
-	return c.Tracker.SetNotified(opID)
+	if tracked := c.Tracker.Get(opID); tracked != nil {
+		return c.Tracker.SetNotified(opID)
+	}
+	// Finalized — update OPERATION.md directly
+	op, err := c.findOperation(opID)
+	if err != nil {
+		return err
+	}
+	op.Notified = true
+	return c.SaveOperation(op)
 }
 
 // Status returns a summary of all operations
