@@ -22,11 +22,10 @@ const TOOLS = [
   {
     name: "swat_dispatch",
     label: "SWAT Dispatch",
-    description: "Dispatch a new task to a SWAT squad",
+    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       details: Type.Optional(Type.String({ description: "Additional details" })),
-      squad: Type.Optional(Type.String({ description: "Target squad (auto-classify if omitted)" })),
     }),
   },
   {

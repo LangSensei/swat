@@ -26,13 +26,12 @@ func (s *Server) Tools() []ToolDef {
 	return []ToolDef{
 		{
 			Name:        "swat_dispatch",
-			Description: "Dispatch a new task to a SWAT squad",
+			Description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
 					"brief":   map[string]interface{}{"type": "string", "description": "Task description"},
 					"details": map[string]interface{}{"type": "string", "description": "Additional details"},
-					"squad":   map[string]interface{}{"type": "string", "description": "Target squad (auto-classify if omitted)"},
 				},
 				"required": []string{"brief"},
 			},

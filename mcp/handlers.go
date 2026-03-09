@@ -156,9 +156,8 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 func (s *Server) handleDispatch(args map[string]interface{}) toolResult {
 	brief, _ := args["brief"].(string)
 	details, _ := args["details"].(string)
-	squad, _ := args["squad"].(string)
 
-	op, err := s.Commander.Dispatch(brief, details, squad)
+	op, err := s.Commander.Dispatch(brief, details)
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("dispatch failed: %v", err)}},
@@ -168,7 +167,7 @@ func (s *Server) handleDispatch(args map[string]interface{}) toolResult {
 
 	data, _ := json.MarshalIndent(op, "", "  ")
 	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: string(data)}},
+		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("Operation queued. Classify + enrich + launch running async.\n%s", string(data))}},
 	}
 }
 

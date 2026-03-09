@@ -9,35 +9,121 @@ import (
 	"time"
 )
 
-// Dispatch creates a new operation and launches it immediately
-func (c *Commander) Dispatch(brief, details, squad string) (*Operation, error) {
+// Dispatch creates a new operation in _unclassified and starts async classify+enrich+launch
+func (c *Commander) Dispatch(brief, details string) (*Operation, error) {
 	now := time.Now().UTC()
 	op := &Operation{
 		OperationID: GenerateOpID(),
 		Brief:       brief,
 		Details:     details,
-		Squad:       squad,
 		Status:      "queued",
 		Source:      "user",
 		CreatedAt:   now,
 	}
-	if err := c.SaveOperation(op); err != nil {
+	if err := c.CreateOperation(op); err != nil {
 		return nil, err
 	}
 
-	// Launch immediately
-	go func() {
-		if err := c.launchOne(op); err != nil {
-			now := time.Now().UTC()
-			reason := fmt.Sprintf("launch_failed: %v", err)
-			op.Status = "failed"
-			op.FailedAt = &now
-			op.FailureReason = &reason
-			c.SaveOperation(op)
-		}
-	}()
+	// Async: classify + enrich + provision + launch
+	go c.processOperation(op)
 
 	return op, nil
+}
+
+// processOperation runs classify+enrich via Copilot CLI, then provisions and launches
+func (c *Commander) processOperation(op *Operation) {
+	unclassifiedDir := c.UnclassifiedOperationDir(op.OperationID)
+
+	// Validate squad exists before moving
+	validateSquad := func(squad string) bool {
+		manifestPath := filepath.Join(c.SwatRoot, "blueprints", "squads", squad, "MANIFEST.md")
+		return fileExists(manifestPath)
+	}
+
+	// Run classify+enrich Copilot CLI
+	prompt := fmt.Sprintf(
+		"You are a task classifier and enricher. "+
+			"Read OPERATION.md in the current directory for the task. "+
+			"Read all MANIFEST.md files under %s (skip _framework) to find available squads. "+
+			"Read past operations under %s for historical context. "+
+			"Your job:\n"+
+			"1. Choose the best squad and update the 'squad' field in OPERATION.md frontmatter.\n"+
+			"2. If you find relevant historical operations, add them to the 'references' field as [{type: \"operation\", value: \"path\"}].\n"+
+			"3. Enrich the ## Assignment section with additional context from historical operations (past findings, key metrics, known issues). Keep the original task description intact, append enrichment below it.\n"+
+			"If no squad is a good fit for the task, leave the squad field empty.\n"+
+			"Do NOT modify any other frontmatter fields besides 'squad' and 'references'.",
+		filepath.Join(c.SwatRoot, "blueprints", "squads"),
+		filepath.Join(c.SwatRoot, "squads"),
+	)
+
+	cmd := exec.Command("copilot", "-p", prompt, "--yolo")
+	cmd.Dir = unclassifiedDir
+
+	logPath := filepath.Join(unclassifiedDir, "classify.log")
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		c.failOperation(op, fmt.Sprintf("create classify log: %v", err))
+		return
+	}
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+
+	if err := cmd.Start(); err != nil {
+		logFile.Close()
+		c.failOperation(op, fmt.Sprintf("start classify copilot: %v", err))
+		return
+	}
+	cmd.Wait()
+	logFile.Close()
+
+	// Re-read OPERATION.md after classify
+	reloaded, err := c.LoadUnclassifiedOperation(op.OperationID)
+	if err != nil {
+		c.failOperation(op, fmt.Sprintf("reload after classify: %v", err))
+		return
+	}
+
+	if reloaded.Squad == "" {
+		c.failOperation(op, "classify failed: no squad assigned")
+		return
+	}
+
+	// Validate squad exists in blueprints
+	if !validateSquad(reloaded.Squad) {
+		c.failOperation(op, fmt.Sprintf("classify assigned unknown squad: %s", reloaded.Squad))
+		return
+	}
+
+	// Move from _unclassified to squad operations dir
+	destDir := c.OperationDir(reloaded.Squad, op.OperationID)
+	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
+		c.failOperation(op, fmt.Sprintf("create squad dir: %v", err))
+		return
+	}
+	if err := os.Rename(unclassifiedDir, destDir); err != nil {
+		c.failOperation(op, fmt.Sprintf("move to squad: %v", err))
+		return
+	}
+
+	// Provision and launch
+	if err := c.provision(reloaded, destDir); err != nil {
+		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
+		return
+	}
+
+	if err := c.launchCopilot(reloaded, destDir); err != nil {
+		c.failOperation(reloaded, fmt.Sprintf("launch: %v", err))
+		return
+	}
+}
+
+// failOperation marks an operation as failed
+func (c *Commander) failOperation(op *Operation, reason string) {
+	now := time.Now().UTC()
+	op.Status = "failed"
+	op.FailedAt = &now
+	op.FailureReason = &reason
+	c.SaveOperation(op)
 }
 
 // Cancel marks an operation as failed and kills the process if active
@@ -61,14 +147,8 @@ func (c *Commander) Cancel(opID string) error {
 	return c.SaveOperation(op)
 }
 
-// launchOne prepares the operation directory and starts a Copilot CLI process
-func (c *Commander) launchOne(op *Operation) error {
-	opDir := c.OperationDir(op.Squad, op.OperationID)
-
-	if err := c.provision(op, opDir); err != nil {
-		return fmt.Errorf("provision: %w", err)
-	}
-
+// launchCopilot starts a Copilot CLI process for the operation
+func (c *Commander) launchCopilot(op *Operation, opDir string) error {
 	prompt := "Begin operation. Read OPERATION.md for your task brief, then follow the protocol in AGENTS.md."
 
 	cmd := exec.Command("copilot", "-p", prompt, "--yolo")

@@ -19,9 +19,35 @@ type BrowseResult struct {
 	Installed   bool   `json:"installed"`
 }
 
+// ListSquads returns all installed squad blueprints
+func (c *Commander) ListSquads() ([]map[string]string, error) {
+	bpDir := filepath.Join(c.SwatRoot, "blueprints")
+	entries, err := os.ReadDir(filepath.Join(bpDir, "squads"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var squads []map[string]string
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "_framework" {
+			continue
+		}
+		info := map[string]string{"name": entry.Name()}
+		manifestPath := filepath.Join(bpDir, "squads", entry.Name(), "MANIFEST.md")
+		if data, err := os.ReadFile(manifestPath); err == nil {
+			if desc := extractFrontmatterField(string(data), "description"); desc != "" {
+				info["description"] = desc
+			}
+		}
+		squads = append(squads, info)
+	}
+	return squads, nil
+}
+
 // Browse lists all squads available in the marketplace
 func (c *Commander) Browse() ([]BrowseResult, error) {
-	// List squads/ directory via GitHub API
 	entries, err := ghListDir("squads")
 	if err != nil {
 		return nil, fmt.Errorf("list marketplace squads: %w", err)
@@ -33,7 +59,6 @@ func (c *Commander) Browse() ([]BrowseResult, error) {
 		if e.Type != "dir" || name == "_framework" {
 			continue
 		}
-		// Fetch MANIFEST.md to get description
 		desc := ""
 		data, err := ghGetFile("squads/" + name + "/MANIFEST.md")
 		if err == nil {
@@ -58,22 +83,18 @@ func (c *Commander) Install(squad string) error {
 		return fmt.Errorf("squad %q is already installed", squad)
 	}
 
-	// Download squad from marketplace
 	if err := ghDownloadDir("squads/"+squad, squadDir); err != nil {
 		return fmt.Errorf("download squad %q: %w", squad, err)
 	}
 
-	// Verify MANIFEST.md exists
 	if !fileExists(filepath.Join(squadDir, "MANIFEST.md")) {
 		os.RemoveAll(squadDir)
 		return fmt.Errorf("squad %q not found in marketplace", squad)
 	}
 
-	// Resolve all dependencies (framework + squad + transitive skills)
 	allSkills := c.resolveDependencies(squad)
 	allMCPs := c.resolveMCPDependencies(squad)
 
-	// Install missing skills
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(bpDir, "skills", skill)
 		if fileExists(destSkill) {
@@ -84,7 +105,6 @@ func (c *Commander) Install(squad string) error {
 		}
 	}
 
-	// Install missing MCPs
 	for _, mcp := range allMCPs {
 		destMCP := filepath.Join(bpDir, "mcps", mcp+".json")
 		if fileExists(destMCP) {
@@ -112,7 +132,6 @@ func (c *Commander) Update(squad string) error {
 		return fmt.Errorf("squad %q is not installed", squad)
 	}
 
-	// Re-download squad (overwrite existing)
 	if err := os.RemoveAll(squadDir); err != nil {
 		return fmt.Errorf("remove old squad %q: %w", squad, err)
 	}
@@ -120,13 +139,12 @@ func (c *Commander) Update(squad string) error {
 		return fmt.Errorf("download squad %q: %w", squad, err)
 	}
 
-	// Resolve and update all dependencies
 	allSkills := c.resolveDependencies(squad)
 	allMCPs := c.resolveMCPDependencies(squad)
 
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(bpDir, "skills", skill)
-		os.RemoveAll(destSkill) // remove old version
+		os.RemoveAll(destSkill)
 		if err := ghDownloadDir("skills/"+skill, destSkill); err != nil {
 			return fmt.Errorf("download skill %q: %w", skill, err)
 		}
@@ -156,7 +174,6 @@ func (c *Commander) Uninstall(squad string, purge bool) error {
 		return fmt.Errorf("squad %q is not installed", squad)
 	}
 
-	// Check for active operations
 	ops, err := c.ListOperations()
 	if err == nil {
 		for _, op := range ops {
@@ -234,7 +251,6 @@ type ghEntry struct {
 	Path string `json:"path"`
 }
 
-// ghListDir lists directory contents via GitHub Contents API
 func ghListDir(path string) ([]ghEntry, error) {
 	url := fmt.Sprintf("%s/contents/%s", marketplaceAPI, path)
 	resp, err := http.Get(url)
@@ -257,7 +273,6 @@ func ghListDir(path string) ([]ghEntry, error) {
 	return entries, nil
 }
 
-// ghGetFile downloads a single file's raw content
 func ghGetFile(path string) ([]byte, error) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/LangSensei/swat-marketplace/main/%s", path)
 	resp, err := http.Get(url)
@@ -276,7 +291,6 @@ func ghGetFile(path string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// ghDownloadDir recursively downloads a directory from the marketplace
 func ghDownloadDir(remotePath, localDir string) error {
 	entries, err := ghListDir(remotePath)
 	if err != nil {
@@ -293,7 +307,6 @@ func ghDownloadDir(remotePath, localDir string) error {
 			if err != nil {
 				return fmt.Errorf("download %s: %w", e.Path, err)
 			}
-			// Preserve executable bit for .sh files
 			perm := os.FileMode(0644)
 			if strings.HasSuffix(e.Name, ".sh") {
 				perm = 0755

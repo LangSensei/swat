@@ -1,27 +1,46 @@
 ---
+# Commander fields (written at dispatch, do not modify)
+# format: YYYYMMDD-8hex (e.g., 20260212-a1b2c3d4)
 operation_id:
+# filled by classify (Copilot)
 squad:
-brief:
-status: in-progress
+# who initiated this operation (user | schedule | system)
 source:
-pid: 0
-notified: false
-retry_count: 0
+# written by Commander after launch
+pid:
+# UTC timestamp when operation was created
 created_at:
+# UTC timestamp when Copilot CLI was launched
 dispatched_at:
-completed_at:
+# UTC timestamp when operation failed
 failed_at:
+# filled if status is failed
 failure_reason:
-summary:
+# filled by classify (Copilot)
+# e.g., [{type: "operation", value: "../20260309-xxxx/"}, {type: "url", value: "https://..."}, {type: "email-address", value: "user@example.com"}]
 references: []
+
+# Captain output fields (filled during/after execution)
+# queued → active → completed / failed
+status:
+# 2-3 sentence summary of outcome
+summary:
+# UTC timestamp when operation completed successfully
+completed_at:
 ---
 
-# OPERATION
+# {BRIEF}
+<!-- Commander: extracted from brief — do not modify -->
 
-## Task
+## Assignment
+<!-- Commander: full operation description — do not modify -->
+{DETAILS}
 
-<!-- Task description injected by Commander -->
+## Summary
+<!-- Captain: write a rich summary of findings and outcome -->
 
-## Details
+## Findings
+<!-- Captain: key discoveries, root cause, impact, affected environments -->
 
-<!-- Optional details -->
+## Action Items
+<!-- Captain: concrete recommendations and next steps -->
