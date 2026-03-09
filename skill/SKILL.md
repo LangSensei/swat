@@ -86,7 +86,7 @@ cron(action=add, job={
   sessionTarget: "isolated",
   payload: {
     kind: "agentTurn",
-    message: "You are a SWAT completion monitor.\n\n1. Read workspace file memory/swat-monitor.json. If missing, treat lastKnownIds as [].\n2. Call swat_ops(status=completed, limit=10) and swat_ops(status=failed, limit=10) to get recent terminal operations.\n3. Find new completions/failures: IDs present in results but NOT in lastKnownIds.\n4. For each new result, send the user a summary (operation ID, squad, brief, status, key findings).\n5. Update memory/swat-monitor.json with all current terminal IDs (keep last 50 to avoid unbounded growth).\n6. If nothing new, reply NO_REPLY."
+    message: "You are a SWAT completion monitor.\n\n1. Read workspace file memory/swat-monitor.json. If missing, treat lastKnownIds as [].\n2. Call swat_ops(status=completed, limit=10) and swat_ops(status=failed, limit=10) to get recent terminal operations.\n3. Find new completions/failures: IDs present in results but NOT in lastKnownIds.\n4. For each new result, send the user a summary (operation ID, squad, brief, status, key findings).\n5. Update memory/swat-monitor.json with all reported IDs (keep last 50 to avoid unbounded growth).\n6. If nothing new, reply NO_REPLY."
   },
   delivery: { mode: "announce" }
 })
