@@ -10,10 +10,6 @@ import (
 
 // BackgroundLoop runs the Commander's periodic scan
 func (c *Commander) BackgroundLoop(interval time.Duration) {
-	// Run once on startup
-	c.Scan()
-	c.CheckDue()
-
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
