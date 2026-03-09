@@ -6,9 +6,7 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 
 | Command | Purpose |
 |---|---|
-| `swat` | Start Commander loop + MCP server |
-| `swat --mcp-only` | Start MCP server only (no Commander loop) |
-| `swat --version` | Show version |
+| `swat --version` | Show installed version |
 
 ## Tools
 
