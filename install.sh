@@ -233,11 +233,25 @@ register_plugin() {
 }
 
 post_install() {
-    # PATH check
+    # PATH check — auto-add if missing
     if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-        info "Add to your shell profile:"
-        echo "  export PATH=\"$BIN_DIR:\$PATH\""
-        echo ""
+        local line="export PATH=\"$BIN_DIR:\$PATH\""
+        local added=false
+        for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+            if [[ -f "$rc" ]] && ! grep -qF "$BIN_DIR" "$rc" 2>/dev/null; then
+                echo "" >> "$rc"
+                echo "# Added by SWAT installer" >> "$rc"
+                echo "$line" >> "$rc"
+                added=true
+                ok "Added $BIN_DIR to PATH in $(basename "$rc")"
+            fi
+        done
+        if [[ "$added" == false ]]; then
+            info "Add to your shell profile:"
+            echo "  $line"
+            echo ""
+        fi
+        export PATH="$BIN_DIR:$PATH"
     fi
 
     register_plugin

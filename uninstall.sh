@@ -86,6 +86,30 @@ else
     fi
 fi
 
+# --- Remove skill --------------------------------------------------------
+
+for dir in "$HOME/.npm-global/lib/node_modules/openclaw/skills" "/usr/local/lib/node_modules/openclaw/skills" "/usr/lib/node_modules/openclaw/skills"; do
+    if [[ -d "$dir/swat" ]]; then
+        rm -rf "$dir/swat"
+        ok "Removed skill from $dir/swat/"
+        break
+    fi
+done
+
+# --- Remove PATH entry from shell profiles -------------------------------
+
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    if [[ -f "$rc" ]] && grep -q "# Added by SWAT installer" "$rc" 2>/dev/null; then
+        # Remove the comment line and the export line right after it
+        if sed --version &>/dev/null 2>&1; then
+            sed -i '/# Added by SWAT installer/{N;d;}' "$rc"
+        else
+            sed -i '' '/# Added by SWAT installer/{N;d;}' "$rc"
+        fi
+        ok "Cleaned PATH from $(basename "$rc")"
+    fi
+done
+
 # --- Remove OpenClaw plugin config --------------------------------------
 
 OPENCLAW_CONFIG="$HOME/.openclaw/openclaw.json"
