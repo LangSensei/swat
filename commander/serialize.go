@@ -54,8 +54,9 @@ func buildOperationFile(op *Operation) string {
 
 	// Body
 	briefTitle := op.Brief
-	if len(briefTitle) > 80 {
-		briefTitle = briefTitle[:80] + "..."
+	if runeCount := len([]rune(briefTitle)); runeCount > 60 {
+		runes := []rune(briefTitle)
+		briefTitle = string(runes[:60]) + "..."
 	}
 	if idx := strings.Index(briefTitle, "\n"); idx > 0 {
 		briefTitle = briefTitle[:idx]
