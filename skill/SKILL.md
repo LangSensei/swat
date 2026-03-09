@@ -26,7 +26,9 @@ SWAT dispatches tasks to autonomous AI squads powered by GitHub Copilot CLI. Eac
 
 - Call `swat_list` **only when the user asks** about a task, or when you have a natural reason to check (e.g., heartbeat).
 - **Never** use `sleep`, polling loops, or repeated `exec` calls to wait for completion. This blocks the main session and makes you unresponsive.
-- `swat_list` returns counts + operations. Use `status` and `since` filters to narrow results.
+- `swat_list` returns counts + operations. Filters:
+  - `status` — `queued`, `active`, `completed`, `failed`
+  - `since` — RFC3339 timestamp (e.g. `2026-03-09T04:00:00Z`), only returns terminal ops after this time; active/queued always included
 
 ## Completion Monitoring (Active-Diff Pattern)
 
