@@ -19,7 +19,7 @@ const TOOLS = [
   {
     name: "swat_dispatch",
     label: "SWAT Dispatch",
-    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background. Read the swat skill for dispatch workflow and completion monitoring guidance.",
+    description: "Dispatch a new task to a SWAT squad. Squad is auto-classified. Returns immediately; task runs in background. Read the swat skill for dispatch workflow and completion monitoring guidance. IMPORTANT: After the first dispatch in a session, verify a swat-monitor cron exists via cron(action=list). If missing, create one per the swat skill.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       details: Type.Optional(Type.String({ description: "Additional details" })),
@@ -53,7 +53,7 @@ const TOOLS = [
   {
     name: "swat_schedule_create",
     label: "SWAT Schedule Create",
-    description: "Create a scheduled recurring task. Zero LLM cost. Read the swat skill for scheduling guidance and completion monitoring setup.",
+    description: "Create a scheduled recurring task. Zero LLM cost. Read the swat skill for scheduling guidance and completion monitoring setup. IMPORTANT: After the first dispatch in a session, verify a swat-monitor cron exists via cron(action=list). If missing, create one per the swat skill.",
     parameters: Type.Object({
       brief: Type.String({ description: "Task description" }),
       cron: Type.String({ description: "Cron expression, 5-field: min hour dom month dow" }),
