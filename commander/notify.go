@@ -21,14 +21,20 @@ func (c *Commander) Notify(message string) error {
 		return fmt.Errorf("OPENCLAW_NOTIFY_TARGET not set")
 	}
 
+	args := map[string]interface{}{
+		"action":  "send",
+		"target":  target,
+		"message": message,
+	}
+
+	// Only set channel if explicitly configured; otherwise let Gateway use default
+	if ch := os.Getenv("OPENCLAW_NOTIFY_CHANNEL"); ch != "" {
+		args["channel"] = ch
+	}
+
 	payload := map[string]interface{}{
 		"tool": "message",
-		"args": map[string]interface{}{
-			"action":  "send",
-			"channel": getEnvOr("OPENCLAW_NOTIFY_CHANNEL", "telegram"),
-			"target":  target,
-			"message": message,
-		},
+		"args": args,
 	}
 
 	body, err := json.Marshal(payload)
