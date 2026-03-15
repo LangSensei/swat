@@ -4,7 +4,7 @@ version: "1.1.0"
 description: Base squad operation protocol — boot, execution, seal, debrief
 dependencies:
   skills: [planning-with-files, knowledge-with-files, debrief]
-  mcps: [swat]
+  mcps: []
 ---
 
 # {SQUAD_NAME} Squad — Operation Protocol
