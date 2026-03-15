@@ -85,12 +85,14 @@ func (c *Commander) processOperation(op *Operation) {
 
 	if reloaded.Squad == "" {
 		c.failOperation(op, "classify failed: no squad assigned")
+		c.Notify(fmt.Sprintf("⚠️ Task could not be classified — no matching squad found.\n\nBrief: %s", op.Brief))
 		return
 	}
 
 	// Validate squad exists in blueprints
 	if !validateSquad(reloaded.Squad) {
 		c.failOperation(op, fmt.Sprintf("classify assigned unknown squad: %s", reloaded.Squad))
+		c.Notify(fmt.Sprintf("⚠️ Task classified to squad '%s' which doesn't exist.\n\nBrief: %s", reloaded.Squad, op.Brief))
 		return
 	}
 
