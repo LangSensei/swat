@@ -64,16 +64,9 @@ Use `swat_schedules` to view all schedules and `swat_schedule_delete(id)` to rem
 - SWAT scheduler → deterministic recurring tasks (zero LLM cost, e.g. "analyze X every Monday")
 - OpenClaw cron → tasks needing LLM judgment
 
-## Completion Notifications (Debrief)
+## Completion Notifications
 
-Squads **automatically notify the user** when they finish. No polling or monitoring needed.
-
-Each squad follows the protocol: **Seal → Debrief → Distill**
-- **Seal**: verify work, write summary, generate report, mark completed
-- **Debrief**: notify user (via OpenClaw Gateway) OR dispatch next squad
-- **Distill**: knowledge + INTEL sedimentation (happens after user is notified)
-
-**Classify failures** (no matching squad, unknown squad) also trigger automatic notifications to the user with actionable suggestions.
+Squads **automatically notify the user** when they finish or fail. Classify failures also trigger automatic notifications.
 
 **You do NOT need to:**
 - Set up completion monitoring cron jobs
