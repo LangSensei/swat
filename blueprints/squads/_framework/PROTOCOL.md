@@ -77,10 +77,10 @@ S4. **Mark completed** — set `status: completed` in `OPERATION.md`
 
 Steps in this section use the **D** prefix. Debrief happens immediately after seal — deliver results before anything else.
 
-D1. **Choose exactly one exit** (see the debrief skill for details):
+D1. **Choose exactly one handoff** (see the debrief skill for details):
    - **Notify** — if this is the final step and no further work is needed, use `notify.sh` from the debrief skill to send a concise notification to the user with your key findings. Lead with the conclusion, include key data points, keep it to 2-5 sentences.
    - **Dispatch** — if further work is needed by another squad, use the `swat_dispatch` MCP tool to hand off the next task with a clear brief and reference to this operation's findings.
-   Never both. Never neither. Every operation must have exactly one exit.
+   Never both. Never neither.
 
 #### Learn
 
