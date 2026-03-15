@@ -1,6 +1,6 @@
 ---
 name: swat
-description: "SWAT autonomous squad orchestration. Use when: dispatching tasks, checking operation status, managing squads/schedules, or monitoring task completions. Covers dispatch workflow, completion monitoring (active-diff cron pattern), scheduling, and marketplace operations."
+description: "SWAT autonomous squad orchestration. Use when: dispatching tasks, checking operation status, managing squads/schedules, or monitoring task completions. Covers dispatch workflow, debrief notifications, scheduling, and marketplace operations."
 ---
 
 # SWAT - Autonomous Squad Orchestration
@@ -62,53 +62,37 @@ Use `swat_schedules` to view all schedules and `swat_schedule_delete(id)` to rem
 
 **When to use SWAT scheduler vs OpenClaw cron:**
 - SWAT scheduler → deterministic recurring tasks (zero LLM cost, e.g. "analyze X every Monday")
-- OpenClaw cron → tasks needing LLM judgment (e.g. completion monitoring with active-diff)
+- OpenClaw cron → tasks needing LLM judgment
+
+## Completion Notifications
+
+Squads automatically notify the user when they finish or fail. Use `swat_ops` to check status on-demand when the user asks.
 
 ## Checking Results
 
 - Call `swat_ops` **only when the user asks** about a task, or when you have a natural reason to check (e.g., heartbeat).
-- **Never** use `sleep`, polling loops, or repeated `exec` calls to wait for completion. This blocks the main session and makes you unresponsive.
+- **Never** use `sleep`, polling loops, or repeated `exec` calls to wait for completion.
 - `swat_ops` returns counts + operations. Filters:
   - `status` — `queued`, `active`, `completed`, `failed`
-  - `since` — RFC3339 timestamp (e.g. `2026-03-09T04:00:00Z`), only returns terminal ops after this time; active/queued always included
+  - `since` — RFC3339 timestamp, only returns terminal ops after this time; active/queued always included
   - `limit` — max results (default 50)
   - `offset` — skip first N results (default 0)
   - Results sorted by time descending (most recent first)
 
-## Completion Monitoring
-
-SWAT tasks run in the background — both manual dispatches and scheduled tasks. To get notified when tasks complete, set up a **persistent** OpenClaw cron job:
-
-```
-cron(action=add, job={
-  name: "swat-monitor",
-  schedule: { kind: "every", everyMs: 300000 },
-  sessionTarget: "isolated",
-  payload: {
-    kind: "agentTurn",
-    message: "You are a SWAT completion monitor.\n\n1. Read workspace file memory/swat-monitor.json. If missing, treat lastKnownIds as [].\n2. Call swat_ops(status=completed, limit=10) and swat_ops(status=failed, limit=10) to get recent terminal operations.\n3. Find new completions/failures: IDs present in results but NOT in lastKnownIds.\n4. For each new result, send the user a summary (operation ID, squad, brief, status, key findings).\n5. Update memory/swat-monitor.json with all reported IDs (keep last 50 to avoid unbounded growth).\n6. If nothing new, reply NO_REPLY."
-  },
-  delivery: { mode: "announce" }
-})
-```
-
-- **Persistent**: This cron runs continuously (every 5 min), not just after dispatch. It catches both manual and scheduled task completions.
-- **Set up once**: Create this cron after SWAT is installed. Check `cron(action=list)` before creating — don't stack duplicates.
-- **Interval**: 5 minutes is the default. Use 2 minutes if the user wants faster updates.
-
 ## Critical Rules
 
 1. **Fire and forget** — After dispatch, immediately return control to the user. Do not monitor, poll, or block.
-2. **No sleep/exec polling** — Never run `sleep X && check` or similar patterns. SWAT tasks can take minutes; blocking the session makes you unreachable.
-3. **Auto-classification** — You do NOT need to pick a squad. `swat_dispatch` auto-classifies the task. If no squad fits, the operation fails with a clear reason.
+2. **No sleep/exec polling** — Never run `sleep X && check` or similar patterns.
+3. **Auto-classification** — You do NOT need to pick a squad. `swat_dispatch` auto-classifies the task.
 4. **Concurrent operations** — Multiple tasks can run in parallel across different squads.
-5. **Failed operations** — Include the failure reason when reporting to the user. Unclassified failures stay in `_unclassified/`.
+5. **Failed operations** — Include the failure reason when reporting to the user.
 
 ## Marketplace
 
-- `swat_squad_browse` — See what's available to install (fetches from GitHub, no clone needed).
+- `swat_squad_browse` — See what's available to install.
 - `swat_squad_install(squad)` — Downloads squad + resolves dependencies automatically.
 - `swat_squad_uninstall(squad)` — Removes squad blueprint + cleans up orphaned dependencies.
+- `swat_squad_update(squad)` — Update to latest marketplace version.
 
 ## First Run
 
