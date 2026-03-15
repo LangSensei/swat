@@ -85,15 +85,15 @@ func (c *Commander) processOperation(op *Operation) {
 
 	if reloaded.Squad == "" {
 		c.failOperation(op, "classify failed: no squad assigned")
-		squadCount := c.countSquads()
-		c.Notify(fmt.Sprintf("⚠️ Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\n%d squads installed, none matched. Try `swat squads` to see available squads or `swat browse` to find new ones.", op.OperationID, op.Brief, squadCount))
+		squads := c.listSquadSummaries()
+		c.NotifySmart(fmt.Sprintf("[SWAT classify failed] Operation %s could not be classified — no matching squad.\n\nBrief: %s\n\nInstalled squads:\n%s\n\nPlease analyze the situation and recommend actions to the user (e.g., create a new squad, rephrase the task, install from marketplace).", op.OperationID, op.Brief, squads))
 		return
 	}
 
 	// Validate squad exists in blueprints
 	if !validateSquad(reloaded.Squad) {
 		c.failOperation(op, fmt.Sprintf("classify assigned unknown squad: %s", reloaded.Squad))
-		c.Notify(fmt.Sprintf("⚠️ Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s\n\nTry `swat install %s` or `swat browse` to check availability.", reloaded.Squad, op.OperationID, op.Brief, reloaded.Squad))
+		c.NotifySmart(fmt.Sprintf("[SWAT classify failed] Operation %s was classified to squad '%s' which is not installed.\n\nBrief: %s\n\nPlease check if this squad is available in the marketplace and recommend actions to the user.", op.OperationID, reloaded.Squad, op.Brief))
 		return
 	}
 
