@@ -46,6 +46,23 @@ func (c *Commander) ListSquads() ([]map[string]string, error) {
 	return squads, nil
 }
 
+// listSquadSummaries returns a formatted string of installed squads and their descriptions
+func (c *Commander) listSquadSummaries() string {
+	squads, err := c.ListSquads()
+	if err != nil || len(squads) == 0 {
+		return "(none installed)"
+	}
+	var lines []string
+	for _, sq := range squads {
+		desc := sq["description"]
+		if desc == "" {
+			desc = "(no description)"
+		}
+		lines = append(lines, fmt.Sprintf("• %s — %s", sq["name"], desc))
+	}
+	return strings.Join(lines, "\n")
+}
+
 // Browse lists all squads available in the marketplace
 func (c *Commander) Browse() ([]BrowseResult, error) {
 	entries, err := ghListDir("squads")
