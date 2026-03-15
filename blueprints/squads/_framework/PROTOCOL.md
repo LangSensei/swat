@@ -1,7 +1,7 @@
 ---
 name: protocol
 version: "1.1.0"
-description: Base squad operation protocol — boot, execution, seal, debrief
+description: Base squad operation protocol — boot, execution, seal, debrief, learn
 dependencies:
   skills: [planning-with-files, knowledge-with-files, debrief]
   mcps: []
@@ -72,14 +72,24 @@ S1. **Verify planning files:**
 S2. **Fill `OPERATION.md`** — write `summary` (2-3 sentences), set `completed_at` timestamp, fill any remaining output schema fields — follow the guidance comments in `OPERATION.md`. Leave `status: in-progress` (do NOT set completed yet).
 S3. **Generate `report.html`** in the operation root (see [Report Generation](#report-generation))
 S4. **Mark completed** — set `status: completed` in `OPERATION.md`
-S5. **Seal knowledge** — see [Knowledge File](#knowledge-file)
-S6. **Update `INTEL.md`** in the squad folder (two levels up from operation folder) — follow the instructions within the file
-S7. **Final verification** — re-read `plan.md`, `progress.md`, and `findings.md`. Confirm the seal phases (report, knowledge, intel) are logged in plan and progress. Fix any gaps.
-S8. **Debrief** — choose exactly one exit (see the debrief skill for details):
+
+#### Debrief
+
+Steps in this section use the **D** prefix. Debrief happens immediately after seal — deliver results before anything else.
+
+D1. **Choose exactly one exit** (see the debrief skill for details):
    - **Notify** — if this is the final step and no further work is needed, use `notify.sh` from the debrief skill to send a concise notification to the user with your key findings. Lead with the conclusion, include key data points, keep it to 2-5 sentences.
    - **Dispatch** — if further work is needed by another squad, use the `swat_dispatch` MCP tool to hand off the next task with a clear brief and reference to this operation's findings.
    Never both. Never neither. Every operation must have exactly one exit.
-S9. **Terminate** — stop the loop. The squad runs in `-p` mode and auto-terminates; the terminal tab closes when the process exits.
+
+#### Learn
+
+Steps in this section use the **L** prefix. Learning happens after debrief — the user already has their results.
+
+L1. **Seal knowledge** — see [Knowledge File](#knowledge-file)
+L2. **Update `INTEL.md`** in the squad folder (two levels up from operation folder) — follow the instructions within the file
+L3. **Final verification** — re-read `plan.md`, `progress.md`, and `findings.md`. Confirm all phases (seal, debrief, learn) are logged in plan and progress. Fix any gaps.
+L4. **Terminate** — stop the loop. The squad runs in `-p` mode and auto-terminates; the terminal tab closes when the process exits.
 
 ### Reference
 
