@@ -1,7 +1,7 @@
 ---
 name: protocol
 version: "1.1.0"
-description: Base squad operation protocol — boot, execution, seal, debrief, learn
+description: Base squad operation protocol — boot, execution, seal, debrief, distill
 dependencies:
   skills: [planning-with-files, knowledge-with-files, debrief]
   mcps: []
@@ -82,13 +82,13 @@ D1. **Choose exactly one handoff** (see the debrief skill for details):
    - **Dispatch** — if further work is needed by another squad, use the `swat_dispatch` MCP tool to hand off the next task with a clear brief and reference to this operation's findings.
    Never both. Never neither.
 
-#### Learn
+#### Distill
 
-Steps in this section use the **L** prefix. Learning happens after debrief — the user already has their results.
+Steps in this section use the **L** prefix. Distillation happens after debrief — the user already has their results.
 
 L1. **Seal knowledge** — see [Knowledge File](#knowledge-file)
 L2. **Update `INTEL.md`** in the squad folder (two levels up from operation folder) — follow the instructions within the file
-L3. **Final verification** — re-read `plan.md`, `progress.md`, and `findings.md`. Confirm all phases (seal, debrief, learn) are logged in plan and progress. Fix any gaps.
+L3. **Final verification** — re-read `plan.md`, `progress.md`, and `findings.md`. Confirm all phases (seal, debrief, distill) are logged in plan and progress. Fix any gaps.
 L4. **Terminate** — stop the loop. The squad runs in `-p` mode and auto-terminates; the terminal tab closes when the process exits.
 
 ### Reference
