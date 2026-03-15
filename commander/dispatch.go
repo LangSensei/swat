@@ -86,14 +86,14 @@ func (c *Commander) processOperation(op *Operation) {
 	if reloaded.Squad == "" {
 		c.failOperation(op, "classify failed: no squad assigned")
 		squadCount := c.countSquads()
-		c.Notify(fmt.Sprintf("⚠️ Task could not be classified — no matching squad found.\n\nBrief: %s\n\n%d squads installed, none matched. Try `swat squads` to see available squads or `swat browse` to find new ones.", op.Brief, squadCount))
+		c.Notify(fmt.Sprintf("⚠️ Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\n%d squads installed, none matched. Try `swat squads` to see available squads or `swat browse` to find new ones.", op.OperationID, op.Brief, squadCount))
 		return
 	}
 
 	// Validate squad exists in blueprints
 	if !validateSquad(reloaded.Squad) {
 		c.failOperation(op, fmt.Sprintf("classify assigned unknown squad: %s", reloaded.Squad))
-		c.Notify(fmt.Sprintf("⚠️ Task classified to squad '%s' which is not installed.\n\nBrief: %s\n\nTry `swat install %s` or `swat browse` to check availability.", reloaded.Squad, op.Brief, reloaded.Squad))
+		c.Notify(fmt.Sprintf("⚠️ Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s\n\nTry `swat install %s` or `swat browse` to check availability.", reloaded.Squad, op.OperationID, op.Brief, reloaded.Squad))
 		return
 	}
 
