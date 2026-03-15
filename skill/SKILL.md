@@ -66,14 +66,7 @@ Use `swat_schedules` to view all schedules and `swat_schedule_delete(id)` to rem
 
 ## Completion Notifications
 
-Squads **automatically notify the user** when they finish or fail. Classify failures also trigger automatic notifications.
-
-**You do NOT need to:**
-- Set up completion monitoring cron jobs
-- Poll `swat_ops` in a loop
-- Use active-diff patterns
-
-**You CAN still use `swat_ops`** to check status on-demand when the user asks.
+Squads automatically notify the user when they finish or fail. Use `swat_ops` to check status on-demand when the user asks.
 
 ## Checking Results
 
