@@ -46,6 +46,15 @@ func (c *Commander) ListSquads() ([]map[string]string, error) {
 	return squads, nil
 }
 
+// countSquads returns the number of installed squads
+func (c *Commander) countSquads() int {
+	squads, err := c.ListSquads()
+	if err != nil {
+		return 0
+	}
+	return len(squads)
+}
+
 // listSquadSummaries returns a formatted string of installed squads and their descriptions
 func (c *Commander) listSquadSummaries() string {
 	squads, err := c.ListSquads()
