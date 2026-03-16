@@ -197,8 +197,8 @@ register_plugin() {
         return
     fi
 
-    # Check if already registered
-    if grep -q "$plugin_path" "$oc_config" 2>/dev/null; then
+    # Check if already registered AND binaryPath is configured for this plugin
+    if grep -q "$plugin_path" "$oc_config" 2>/dev/null && grep -A5 "swat-mcp-bridge" "$oc_config" 2>/dev/null | grep -q "binaryPath"; then
         ok "Plugin already registered in OpenClaw config"
         return
     fi
