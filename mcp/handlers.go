@@ -369,15 +369,25 @@ func (s *Server) handleInstall(args map[string]interface{}) toolResult {
 		}
 	}
 
-	if err := s.Commander.Install(squad); err != nil {
+	prereqs, err := s.Commander.Install(squad)
+	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("install failed: %v", err)}},
 			IsError: true,
 		}
 	}
 
+	msg := fmt.Sprintf("squad %q installed successfully", squad)
+	if len(prereqs) > 0 {
+		msg += "\n\n⚠️ Prerequisites needed:"
+		for _, p := range prereqs {
+			msg += fmt.Sprintf("\n- skill %q requires setup: %s", p.Skill, p.Path)
+		}
+		msg += "\n\nPlease complete these prerequisites before dispatching tasks."
+	}
+
 	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("squad %q installed successfully", squad)}},
+		Content: []contentBlock{{Type: "text", Text: msg}},
 	}
 }
 
