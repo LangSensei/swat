@@ -166,7 +166,6 @@ func (c *Commander) Install(squad string) ([]SkillPrereq, error) {
 	}
 
 	allSkills := c.resolveDependencies(squad)
-	allMCPs := c.resolveMCPDependencies(squad)
 
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(bpDir, "skills", skill)
@@ -177,6 +176,10 @@ func (c *Commander) Install(squad string) ([]SkillPrereq, error) {
 			return nil, fmt.Errorf("download skill %q: %w", skill, err)
 		}
 	}
+
+	// Resolve MCPs after skills are downloaded so transitive deps
+	// declared in skill SKILL.md files are visible on disk.
+	allMCPs := c.resolveMCPDependencies(squad)
 
 	for _, mcp := range allMCPs {
 		destMCP := filepath.Join(bpDir, "mcps", mcp+".json")
@@ -214,7 +217,6 @@ func (c *Commander) Update(squad string) error {
 	}
 
 	allSkills := c.resolveDependencies(squad)
-	allMCPs := c.resolveMCPDependencies(squad)
 
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(bpDir, "skills", skill)
@@ -223,6 +225,9 @@ func (c *Commander) Update(squad string) error {
 			return fmt.Errorf("download skill %q: %w", skill, err)
 		}
 	}
+
+	// Resolve MCPs after skills are downloaded so transitive deps are visible
+	allMCPs := c.resolveMCPDependencies(squad)
 
 	for _, mcp := range allMCPs {
 		destMCP := filepath.Join(bpDir, "mcps", mcp+".json")
