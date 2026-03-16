@@ -126,13 +126,27 @@ Execution:
 
 #### Report Generation
 
-Generate `report.html` in the operation root. Pull content from `OPERATION.md` and all `operators/*/` directories (plan.md, findings.md, progress.md, knowledge.md where present).
+Generate `report.html` in the operation root. This is the **user-facing deliverable** — focus on results, not process.
 
-Requirements:
+**Structure** (use these sections in order):
+
+1. **Executive Summary** — 2-3 sentence conclusion with the answer/recommendation
+2. **Key Findings** — the important discoveries, data points, or insights (use tables, lists, or cards — not prose walls)
+3. **Data & Evidence** — supporting tables, comparisons, charts, or structured data. This is the meat of the report.
+4. **Methodology** — 1-2 short paragraphs summarizing how the work was done. Do NOT copy-paste raw logs, planning files, or progress notes.
+
+**Requirements:**
 - **Single self-contained HTML file** — all CSS inlined, no external dependencies
-- **Responsive** — must be readable on both mobile and desktop (include `<meta name="viewport">`)
-- **Comprehensive** — include all details, not just a summary
-- **Polished** — this is the deliverable, not a raw dump of markdown files. Structure the content for a reader who has no context
+- **Responsive** — readable on mobile and desktop (`<meta name="viewport">`)
+- **Result-oriented** — the reader wants answers, not a replay of your thought process
+- **Visually structured** — prefer tables, cards, and clear headings over long paragraphs
+- **Concise process section** — methodology should be a brief summary, not a dump of plan.md/progress.md/findings.md
+
+**Anti-patterns (do NOT do these):**
+- Copy-pasting raw markdown files into HTML
+- Including full planning logs or step-by-step execution traces
+- Walls of unstructured text
+- Repeating the same information in multiple sections
 
 #### Knowledge File
 
