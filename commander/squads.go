@@ -100,22 +100,69 @@ func (c *Commander) Browse() ([]BrowseResult, error) {
 	return results, nil
 }
 
-// Install fetches a squad from the marketplace and installs its dependencies
-func (c *Commander) Install(squad string) error {
+// SkillPrereq represents a skill that has prerequisites needing user setup
+type SkillPrereq struct {
+	Skill string `json:"skill"`
+	Path  string `json:"path"` // relative path within the skill dir, e.g. "references/setup.md"
+}
+
+// collectPrereqs scans installed skills for prereq declarations in frontmatter
+func (c *Commander) collectPrereqs(skills []string) []SkillPrereq {
+	bpDir := filepath.Join(c.SwatRoot, "blueprints")
+	var prereqs []SkillPrereq
+	for _, skill := range skills {
+		skillMD := filepath.Join(bpDir, "skills", skill, "SKILL.md")
+		data, err := os.ReadFile(skillMD)
+		if err != nil {
+			continue
+		}
+		val := parseFrontmatterValue(string(data), "prereq")
+		if val != "" {
+			absPath := filepath.Join(bpDir, "skills", skill, val)
+			prereqs = append(prereqs, SkillPrereq{Skill: skill, Path: absPath})
+		}
+	}
+	return prereqs
+}
+
+// parseFrontmatterValue extracts a single string value from frontmatter
+func parseFrontmatterValue(md, field string) string {
+	if !strings.HasPrefix(md, "---") {
+		return ""
+	}
+	end := strings.Index(md[3:], "\n---")
+	if end < 0 {
+		return ""
+	}
+	fm := md[4 : end+3]
+	for _, line := range strings.Split(fm, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, field+":") {
+			val := strings.TrimSpace(strings.TrimPrefix(trimmed, field+":"))
+			val = strings.Trim(val, "\"'")
+			return val
+		}
+	}
+	return ""
+}
+
+// Install fetches a squad from the marketplace and installs its dependencies.
+// Returns a list of skill prereqs that need user attention (may be empty).
+func (c *Commander) Install(squad string) ([]SkillPrereq, error) {
 	bpDir := filepath.Join(c.SwatRoot, "blueprints")
 	squadDir := filepath.Join(bpDir, "squads", squad)
 
 	if fileExists(filepath.Join(squadDir, "MANIFEST.md")) {
-		return fmt.Errorf("squad %q is already installed", squad)
+		return nil, fmt.Errorf("squad %q is already installed", squad)
 	}
 
 	if err := ghDownloadDir("squads/"+squad, squadDir); err != nil {
-		return fmt.Errorf("download squad %q: %w", squad, err)
+		return nil, fmt.Errorf("download squad %q: %w", squad, err)
 	}
 
 	if !fileExists(filepath.Join(squadDir, "MANIFEST.md")) {
 		os.RemoveAll(squadDir)
-		return fmt.Errorf("squad %q not found in marketplace", squad)
+		return nil, fmt.Errorf("squad %q not found in marketplace", squad)
 	}
 
 	allSkills := c.resolveDependencies(squad)
@@ -127,7 +174,7 @@ func (c *Commander) Install(squad string) error {
 			continue
 		}
 		if err := ghDownloadDir("skills/"+skill, destSkill); err != nil {
-			return fmt.Errorf("download skill %q: %w", skill, err)
+			return nil, fmt.Errorf("download skill %q: %w", skill, err)
 		}
 	}
 
@@ -138,15 +185,16 @@ func (c *Commander) Install(squad string) error {
 		}
 		data, err := ghGetFile("mcps/" + mcp + ".json")
 		if err != nil {
-			return fmt.Errorf("download MCP %q: %w", mcp, err)
+			return nil, fmt.Errorf("download MCP %q: %w", mcp, err)
 		}
 		os.MkdirAll(filepath.Join(bpDir, "mcps"), 0755)
 		if err := os.WriteFile(destMCP, data, 0644); err != nil {
-			return fmt.Errorf("write MCP %q: %w", mcp, err)
+			return nil, fmt.Errorf("write MCP %q: %w", mcp, err)
 		}
 	}
 
-	return nil
+	prereqs := c.collectPrereqs(allSkills)
+	return prereqs, nil
 }
 
 // Update re-downloads a squad and its dependencies from the marketplace
