@@ -56,7 +56,7 @@ func (c *Commander) processOperation(op *Operation) {
 		filepath.Join(c.SwatRoot, "squads"),
 	)
 
-	cmd := exec.Command("copilot", "-p", prompt, "--yolo")
+	cmd := exec.Command("copilot", "-p", prompt, "--yolo", "--output-format", "json", "--effort", "low")
 	cmd.Dir = unclassifiedDir
 
 	logPath := filepath.Join(unclassifiedDir, "classify.log")
@@ -160,7 +160,7 @@ func (c *Commander) Cancel(opID string) error {
 func (c *Commander) launchCopilot(op *Operation, opDir string) error {
 	prompt := "Begin operation. Read OPERATION.md for your task brief, then follow the protocol in AGENTS.md."
 
-	cmd := exec.Command("copilot", "-p", prompt, "--yolo")
+	cmd := exec.Command("copilot", "-p", prompt, "--yolo", "--output-format", "json", "--effort", "xhigh")
 	cmd.Dir = opDir
 
 	logPath := filepath.Join(opDir, "copilot.log")
