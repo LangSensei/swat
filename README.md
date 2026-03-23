@@ -5,7 +5,7 @@ Deploy your own AI army. SWAT dispatches autonomous squads powered by GitHub Cop
 ## 🚀 Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/main/install.sh | bash
 ```
 
 This will:
@@ -20,7 +20,7 @@ Then restart OpenClaw and you're ready to go.
 ## 🗑️ Uninstallation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/main/uninstall.sh | bash
 ```
 
 Add `--purge` to also remove runtime data (operation history, intel).

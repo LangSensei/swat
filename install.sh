@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # SWAT v2 Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/main/install.sh | bash
 
 REPO="LangSensei/swat-v2"
 SWAT_HOME="$HOME/.swat"

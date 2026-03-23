@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # SWAT v2 Uninstaller
-# Usage: curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/uninstall.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/main/uninstall.sh | bash
 
 SWAT_HOME="$HOME/.swat"
 BIN_DIR="$HOME/.local/bin"
