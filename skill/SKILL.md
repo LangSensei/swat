@@ -98,7 +98,7 @@ Squads automatically notify the user when they finish or fail. Use `swat_ops` to
 
 If SWAT tools are not available, guide the user to install:
 ```
-curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/main/install.sh | bash
 ```
 Then restart OpenClaw. After that, install a squad: `swat_squad_install("squad-name")`.
 
