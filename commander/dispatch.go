@@ -2,6 +2,7 @@ package commander
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,7 +26,20 @@ func (c *Commander) Dispatch(brief, details string) (*Operation, error) {
 	}
 
 	// Async: classify + enrich + provision + launch
-	go c.processOperation(op)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[dispatch] PANIC in processOperation %s: %v", op.OperationID, r)
+				reason := fmt.Sprintf("panic: %v", r)
+				op.Status = "failed"
+				now := time.Now().UTC()
+				op.FailedAt = &now
+				op.FailureReason = &reason
+				c.SaveOperation(op)
+			}
+		}()
+		c.processOperation(op)
+	}()
 
 	return op, nil
 }
@@ -33,6 +47,7 @@ func (c *Commander) Dispatch(brief, details string) (*Operation, error) {
 // processOperation runs classify+enrich via Copilot CLI, then provisions and launches
 func (c *Commander) processOperation(op *Operation) {
 	unclassifiedDir := c.UnclassifiedOperationDir(op.OperationID)
+	log.Printf("[dispatch] processOperation started: %s", op.OperationID)
 
 	// Validate squad exists before moving
 	validateSquad := func(squad string) bool {
@@ -70,20 +85,29 @@ func (c *Commander) processOperation(op *Operation) {
 
 	if err := cmd.Start(); err != nil {
 		logFile.Close()
+		log.Printf("[dispatch] %s: failed to start classify copilot: %v", op.OperationID, err)
 		c.failOperation(op, fmt.Sprintf("start classify copilot: %v", err))
 		return
 	}
-	cmd.Wait()
-	logFile.Close()
+	if err := cmd.Wait(); err != nil {
+		logFile.Close()
+		log.Printf("[dispatch] %s: classify copilot exited with error: %v", op.OperationID, err)
+	} else {
+		logFile.Close()
+		log.Printf("[dispatch] %s: classify copilot completed successfully", op.OperationID)
+	}
 
 	// Re-read OPERATION.md after classify
 	reloaded, err := c.LoadUnclassifiedOperation(op.OperationID)
 	if err != nil {
+		log.Printf("[dispatch] %s: failed to reload after classify: %v", op.OperationID, err)
 		c.failOperation(op, fmt.Sprintf("reload after classify: %v", err))
 		return
 	}
+	log.Printf("[dispatch] %s: classify result — squad=%q", op.OperationID, reloaded.Squad)
 
 	if reloaded.Squad == "" {
+		log.Printf("[dispatch] %s: classify failed — no squad assigned", op.OperationID)
 		c.failOperation(op, "classify failed: no squad assigned")
 		squads := c.listSquadSummaries()
 		c.Notify(fmt.Sprintf("⚠️ Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s\n\nSuggestions: install a new squad from marketplace (`swat browse`) or rephrase the task.", op.OperationID, op.Brief, squads))
@@ -92,6 +116,7 @@ func (c *Commander) processOperation(op *Operation) {
 
 	// Validate squad exists in blueprints
 	if !validateSquad(reloaded.Squad) {
+		log.Printf("[dispatch] %s: unknown squad %q", op.OperationID, reloaded.Squad)
 		c.failOperation(op, fmt.Sprintf("classify assigned unknown squad: %s", reloaded.Squad))
 		c.Notify(fmt.Sprintf("⚠️ Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s\n\nTry `swat install %s` or `swat browse` to check availability.", reloaded.Squad, op.OperationID, op.Brief, reloaded.Squad))
 		return
@@ -99,31 +124,38 @@ func (c *Commander) processOperation(op *Operation) {
 
 	// Move from _unclassified to squad operations dir
 	destDir := c.OperationDir(reloaded.Squad, op.OperationID)
+	log.Printf("[dispatch] %s: moving to %s", op.OperationID, destDir)
 	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
+		log.Printf("[dispatch] %s: failed to create squad dir: %v", op.OperationID, err)
 		c.failOperation(op, fmt.Sprintf("create squad dir: %v", err))
 		return
 	}
 	if err := os.Rename(unclassifiedDir, destDir); err != nil {
+		log.Printf("[dispatch] %s: failed to move: %v", op.OperationID, err)
 		c.failOperation(op, fmt.Sprintf("move to squad: %v", err))
 		return
 	}
 
 	// Inject Output Schema from MANIFEST into OPERATION.md
 	if err := c.injectOutputSchema(reloaded.Squad, destDir); err != nil {
+		log.Printf("[dispatch] %s: failed to inject output schema: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("inject output schema: %v", err))
 		return
 	}
 
 	// Provision and launch
 	if err := c.provision(reloaded, destDir); err != nil {
+		log.Printf("[dispatch] %s: provision failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
 		return
 	}
 
 	if err := c.launchCopilot(reloaded, destDir); err != nil {
+		log.Printf("[dispatch] %s: launch failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("launch: %v", err))
 		return
 	}
+	log.Printf("[dispatch] %s: launched successfully (squad=%s)", op.OperationID, reloaded.Squad)
 }
 
 // failOperation marks an operation as failed
