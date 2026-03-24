@@ -62,9 +62,11 @@ func New(swatRoot string) *Commander {
 		swatRoot = filepath.Join(home, swatRoot[2:])
 	}
 
-	// Set up commander log file
-	logPath := filepath.Join(swatRoot, "commander.log")
-	os.MkdirAll(swatRoot, 0755)
+	// Set up commander log file (daily rotation)
+	logDir := filepath.Join(swatRoot, "logs")
+	os.MkdirAll(logDir, 0755)
+	logName := fmt.Sprintf("commander-%s.log", time.Now().UTC().Format("2006-01-02"))
+	logPath := filepath.Join(logDir, logName)
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
 		log.SetOutput(logFile)
