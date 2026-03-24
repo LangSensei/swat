@@ -56,7 +56,7 @@ func (c *Commander) processOperation(op *Operation) {
 		filepath.Join(c.SwatRoot, "squads"),
 	)
 
-	cmd := exec.Command("copilot", "-p", prompt, "--yolo", "--output-format", "json", "--effort", "low")
+	cmd := exec.Command("copilot", "-p", prompt, "--yolo", "--output-format", "json", "--effort", "xhigh")
 	cmd.Dir = unclassifiedDir
 
 	logPath := filepath.Join(unclassifiedDir, "classify.log")
