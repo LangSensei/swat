@@ -3,6 +3,7 @@ package commander
 import (
 	"crypto/rand"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -60,6 +61,16 @@ func New(swatRoot string) *Commander {
 		home, _ := os.UserHomeDir()
 		swatRoot = filepath.Join(home, swatRoot[2:])
 	}
+
+	// Set up commander log file
+	logPath := filepath.Join(swatRoot, "commander.log")
+	os.MkdirAll(swatRoot, 0755)
+	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
+		log.SetOutput(logFile)
+	}
+	log.Printf("[commander] started, swatRoot=%s", swatRoot)
+
 	return &Commander{
 		SwatRoot:   swatRoot,
 		RetryCount: make(map[string]int),
