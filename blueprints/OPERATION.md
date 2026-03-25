@@ -1,34 +1,34 @@
 ---
 # Commander fields (written at dispatch, do not modify)
 # format: YYYYMMDD-8hex (e.g., 20260212-a1b2c3d4)
-operation_id:
+operation_id: {OPERATION_ID}
 # filled by classify (Copilot)
-squad:
+squad: {SQUAD}
 # who initiated this operation (user | schedule | system)
-source:
+source: {SOURCE}
 # written by Commander after launch
-pid:
+pid: {PID}
 # UTC timestamp when operation was created
-created_at:
+created_at: {CREATED_AT}
 # UTC timestamp when Copilot CLI was launched
-dispatched_at:
+dispatched_at: {DISPATCHED_AT}
 # UTC timestamp when operation failed
-failed_at:
+failed_at: {FAILED_AT}
 # filled if status is failed
-failure_reason:
+failure_reason: {FAILURE_REASON}
 # filled by classify (Copilot)
 # e.g., [{type: "operation", value: "../20260309-xxxx/"}, {type: "url", value: "https://..."}, {type: "email-address", value: "user@example.com"}]
-references: []
+references: {REFERENCES}
 
 # Captain output fields (filled during/after execution)
 # queued → active → completed / failed
-status:
+status: {STATUS}
 # 2-3 sentence summary of outcome
-summary:
+summary: {SUMMARY}
 # UTC timestamp when operation completed successfully
-completed_at:
+completed_at: {COMPLETED_AT}
 # Squad-specific output fields
-{OUTPUT_SCHEMA}
+# {OUTPUT_SCHEMA}
 ---
 
 # {BRIEF}
