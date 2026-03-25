@@ -50,6 +50,7 @@ func buildOperationFile(op *Operation) string {
 	writeOptionalStr(&sb, "summary", nilIfEmpty(op.Summary))
 	sb.WriteString("# UTC timestamp when operation completed successfully\n")
 	writeOptionalTime(&sb, "completed_at", op.CompletedAt)
+	sb.WriteString("{OUTPUT_SCHEMA}\n")
 	sb.WriteString("---\n\n")
 
 	// Body
