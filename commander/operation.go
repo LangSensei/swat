@@ -21,7 +21,10 @@ func (c *Commander) CreateOperation(op *Operation) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create operation dir: %w", err)
 	}
-	md := buildOperationFile(op)
+	md, err := c.buildOperationFile(op)
+	if err != nil {
+		return fmt.Errorf("build operation file: %w", err)
+	}
 	return os.WriteFile(mdPath, []byte(md), 0644)
 }
 

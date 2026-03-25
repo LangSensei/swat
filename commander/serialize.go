@@ -3,102 +3,84 @@ package commander
 import (
 	"bufio"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
-// buildOperationFile generates a full OPERATION.md with frontmatter + body template
-func buildOperationFile(op *Operation) string {
-	var sb strings.Builder
-	sb.WriteString("---\n")
-	sb.WriteString("# Commander fields (written at dispatch, do not modify)\n")
-	sb.WriteString("# format: YYYYMMDD-8hex (e.g., 20260212-a1b2c3d4)\n")
-	sb.WriteString(fmt.Sprintf("operation_id: %s\n", op.OperationID))
-	sb.WriteString("# filled by classify (Copilot)\n")
-	sb.WriteString(fmt.Sprintf("squad: %s\n", op.Squad))
-	sb.WriteString("# who initiated this operation (user | schedule | system)\n")
-	sb.WriteString(fmt.Sprintf("source: %s\n", op.Source))
-	sb.WriteString("# written by Commander after launch\n")
+// buildOperationFile reads blueprints/OPERATION.md as a template and replaces
+// placeholders with values from the Operation struct.
+func (c *Commander) buildOperationFile(op *Operation) (string, error) {
+	tmplPath := filepath.Join(c.SwatRoot, "blueprints", "OPERATION.md")
+	tmplData, err := os.ReadFile(tmplPath)
+	if err != nil {
+		return "", fmt.Errorf("read operation template: %w", err)
+	}
+
+	result := string(tmplData)
+
+	// Commander fields
+	result = strings.ReplaceAll(result, "{OPERATION_ID}", op.OperationID)
+	result = strings.ReplaceAll(result, "{SQUAD}", op.Squad)
+	result = strings.ReplaceAll(result, "{SOURCE}", op.Source)
+
 	if op.PID > 0 {
-		sb.WriteString(fmt.Sprintf("pid: %d\n", op.PID))
+		result = strings.ReplaceAll(result, "{PID}", fmt.Sprintf("%d", op.PID))
 	} else {
-		sb.WriteString("pid:\n")
+		result = strings.ReplaceAll(result, "{PID}", "")
 	}
-	sb.WriteString("# UTC timestamp when operation was created\n")
-	sb.WriteString(fmt.Sprintf("created_at: %s\n", op.CreatedAt.Format(time.RFC3339)))
-	sb.WriteString("# UTC timestamp when Copilot CLI was launched\n")
-	writeOptionalTime(&sb, "dispatched_at", op.DispatchedAt)
-	sb.WriteString("# UTC timestamp when operation failed\n")
-	writeOptionalTime(&sb, "failed_at", op.FailedAt)
-	sb.WriteString("# filled if status is failed\n")
-	writeOptionalStr(&sb, "failure_reason", op.FailureReason)
-	sb.WriteString("# filled by classify (Copilot)\n")
-	sb.WriteString("# e.g., [{type: \"operation\", value: \"../20260309-xxxx/\"}, {type: \"url\", value: \"https://...\"}]\n")
+
+	result = strings.ReplaceAll(result, "{CREATED_AT}", op.CreatedAt.Format(time.RFC3339))
+	result = strings.ReplaceAll(result, "{DISPATCHED_AT}", formatOptionalTime(op.DispatchedAt))
+	result = strings.ReplaceAll(result, "{FAILED_AT}", formatOptionalTime(op.FailedAt))
+	result = strings.ReplaceAll(result, "{FAILURE_REASON}", formatOptionalStr(op.FailureReason))
+
+	// References require special handling for YAML list format
 	if len(op.References) > 0 {
-		sb.WriteString("references:\n")
+		var refStr strings.Builder
+		refStr.WriteString("references:")
 		for _, ref := range op.References {
-			sb.WriteString(fmt.Sprintf("  - {type: \"%s\", value: \"%s\"}\n", ref.Type, ref.Value))
+			refStr.WriteString(fmt.Sprintf("\n  - {type: \"%s\", value: \"%s\"}", ref.Type, ref.Value))
 		}
+		result = strings.Replace(result, "references: {REFERENCES}", refStr.String(), 1)
 	} else {
-		sb.WriteString("references: []\n")
+		result = strings.ReplaceAll(result, "{REFERENCES}", "[]")
 	}
 
-	sb.WriteString("\n# Captain output fields (filled during/after execution)\n")
-	sb.WriteString("# queued → active → completed / failed\n")
-	sb.WriteString(fmt.Sprintf("status: %s\n", op.Status))
-	sb.WriteString("# 2-3 sentence summary of outcome\n")
-	writeOptionalStr(&sb, "summary", nilIfEmpty(op.Summary))
-	sb.WriteString("# UTC timestamp when operation completed successfully\n")
-	writeOptionalTime(&sb, "completed_at", op.CompletedAt)
-	sb.WriteString("---\n\n")
+	// Captain output fields
+	result = strings.ReplaceAll(result, "{STATUS}", op.Status)
+	result = strings.ReplaceAll(result, "{SUMMARY}", op.Summary)
+	result = strings.ReplaceAll(result, "{COMPLETED_AT}", formatOptionalTime(op.CompletedAt))
 
-	// Body
+	// Body placeholders
 	briefTitle := op.Brief
 	if idx := strings.Index(briefTitle, "\n"); idx > 0 {
 		briefTitle = briefTitle[:idx]
 	}
-	sb.WriteString(fmt.Sprintf("# %s\n", briefTitle))
-	sb.WriteString("<!-- Commander: extracted from brief — do not modify -->\n\n")
+	result = strings.ReplaceAll(result, "{BRIEF}", briefTitle)
 
-	sb.WriteString("## Assignment\n")
-	sb.WriteString("<!-- Commander: full operation description — do not modify -->\n")
 	if op.Details != "" {
-		sb.WriteString(op.Details + "\n")
+		result = strings.ReplaceAll(result, "{DETAILS}", op.Details)
+	} else {
+		result = strings.ReplaceAll(result, "{DETAILS}", "")
 	}
 
-	sb.WriteString("\n## Summary\n")
-	sb.WriteString("<!-- Captain: write a rich summary of findings and outcome -->\n\n")
-
-	sb.WriteString("## Findings\n")
-	sb.WriteString("<!-- Captain: key discoveries, root cause, impact, affected environments -->\n\n")
-
-	sb.WriteString("## Action Items\n")
-	sb.WriteString("<!-- Captain: concrete recommendations and next steps -->\n")
-
-	return sb.String()
+	return result, nil
 }
 
-func writeOptionalTime(sb *strings.Builder, key string, t *time.Time) {
+func formatOptionalTime(t *time.Time) string {
 	if t != nil {
-		sb.WriteString(fmt.Sprintf("%s: %s\n", key, t.Format(time.RFC3339)))
-	} else {
-		sb.WriteString(fmt.Sprintf("%s:\n", key))
+		return t.Format(time.RFC3339)
 	}
+	return ""
 }
 
-func writeOptionalStr(sb *strings.Builder, key string, s *string) {
+func formatOptionalStr(s *string) string {
 	if s != nil && *s != "" {
-		sb.WriteString(fmt.Sprintf("%s: %s\n", key, *s))
-	} else {
-		sb.WriteString(fmt.Sprintf("%s:\n", key))
+		return *s
 	}
-}
-
-func nilIfEmpty(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
+	return ""
 }
 
 // parseOperationMD parses an OPERATION.md file into an Operation struct

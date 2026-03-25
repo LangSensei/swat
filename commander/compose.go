@@ -255,7 +255,7 @@ func (c *Commander) injectOutputSchema(squad string, opDir string) error {
 		return fmt.Errorf("read OPERATION.md: %w", err)
 	}
 
-	placeholder := "{OUTPUT_SCHEMA}"
+	placeholder := "# {OUTPUT_SCHEMA}"
 	contentStr := string(content)
 	if !strings.Contains(contentStr, placeholder) {
 		return nil
