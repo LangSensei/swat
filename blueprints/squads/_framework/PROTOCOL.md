@@ -69,7 +69,13 @@ S1. **Verify planning files:**
    a. `plan.md` — all phases marked `complete`, all items resolved (checked off or `[skipped] reason`). If any item is still actionable, go back and execute it.
    b. `progress.md` — every phase has actions logged with actual actions taken, files created/modified, and results observed. If any section is empty or placeholder, fill it in.
    c. `findings.md` — all discoveries captured. If any findings from your investigation are missing, add them now.
-S2. **Fill `OPERATION.md`** — write `summary` (2-3 sentences), set `completed_at` timestamp, fill any remaining output schema fields — follow the guidance comments in `OPERATION.md`. Leave `status: in-progress` (do NOT set completed yet).
+S2. **Fill `OPERATION.md`** — complete ALL of the following:
+   a. Set `summary:` in frontmatter (2-3 sentences)
+   b. Set `completed_at:` timestamp
+   c. Fill any squad-specific output schema fields in frontmatter
+   d. Write `## Findings` section — key discoveries, root cause, data points
+   e. Write `## Action Items` section — concrete recommendations and next steps
+   Leave `status: in-progress` (do NOT set completed yet).
 S3. **Generate `report.html`** in the operation root (see [Report Generation](#report-generation))
 S4. **Mark completed** — set `status: completed` in `OPERATION.md`
 
