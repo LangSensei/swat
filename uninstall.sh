@@ -23,9 +23,9 @@ if [[ "${1:-}" != "--yes" ]]; then
     warn "This will remove:"
     echo "  - Binary:     $BIN_DIR/swat"
     echo "  - Plugin:     $SWAT_HOME/plugin/"
-    echo "  - Blueprints: $SWAT_HOME/blueprints/"
+    echo "  - Framework:  $SWAT_HOME/blueprints/squads/_framework/, OPERATION.md"
     echo ""
-    warn "Runtime data ($SWAT_HOME/squads/, $SWAT_HOME/schedules/) will be KEPT unless you pass --purge"
+    warn "User data (squads, skills, mcps, schedules, operations) will be KEPT unless you pass --purge"
     echo ""
     read -r -p "Continue? [y/N] " confirm
     if [[ "$confirm" != [yY] ]]; then
@@ -55,11 +55,19 @@ if [[ -d "$SWAT_HOME/plugin" ]]; then
     ok "Removed $SWAT_HOME/plugin/"
 fi
 
-# --- Remove blueprints --------------------------------------------------
+# --- Remove blueprints (framework only; squads/skills/mcps kept unless --purge) ---
 
 if [[ -d "$SWAT_HOME/blueprints" ]]; then
-    rm -rf "$SWAT_HOME/blueprints"
-    ok "Removed $SWAT_HOME/blueprints/"
+    if $PURGE; then
+        rm -rf "$SWAT_HOME/blueprints"
+        ok "Purged $SWAT_HOME/blueprints/"
+    else
+        # Remove framework files (reinstalled by install.sh)
+        rm -rf "$SWAT_HOME/blueprints/squads/_framework" 2>/dev/null && ok "Removed blueprints/squads/_framework/"
+        rm -f "$SWAT_HOME/blueprints/OPERATION.md" 2>/dev/null && ok "Removed blueprints/OPERATION.md"
+        # Keep user-installed squads, skills, mcps
+        info "Kept blueprints/squads/, blueprints/skills/, blueprints/mcps/ (use --purge to remove)"
+    fi
 fi
 
 # --- Purge runtime data -------------------------------------------------
