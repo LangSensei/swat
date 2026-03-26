@@ -64,7 +64,7 @@ func (c *Commander) processOperation(op *Operation) {
 			"Your job:\n"+
 			"1. Choose the best squad and update the 'squad' field in OPERATION.md frontmatter.\n"+
 			"2. If you find relevant historical operations, add them to the 'references' field as [{type: \"operation\", value: \"path\"}].\n"+
-			"3. Enrich the ## Assignment section with additional context from historical operations (past findings, key metrics, known issues). Keep the original task description intact, append enrichment below it.\n"+
+			"3. Write enrichment to the `### Context` section (under ## Assignment). Keep the ## Assignment text intact. Write historical context, related operation findings, and key metrics into ### Context, replacing the `[CLASSIFY: ...]` placeholder.\n"+
 			"If no squad is a good fit for the task, leave the squad field empty.\n"+
 			"Do NOT modify any other frontmatter fields besides 'squad' and 'references'.",
 		filepath.Join(c.SwatRoot, "blueprints", "squads"),
