@@ -1,6 +1,6 @@
 ---
 name: protocol
-version: "1.1.0"
+version: "1.2.0"
 description: Base squad operation protocol — boot, execution, seal, debrief, distill
 dependencies:
   skills: [planning-with-files, knowledge-with-files, debrief]
@@ -84,7 +84,7 @@ S4. **Mark completed** — set `status: completed` in `OPERATION.md`
 Steps in this section use the **D** prefix. Debrief happens immediately after seal — deliver results before anything else.
 
 D1. **Choose exactly one handoff** (see the debrief skill for details):
-   - **Notify** — if this is the final step and no further work is needed, use `notify.sh` from the debrief skill to send a concise notification to the user with your key findings. Lead with the conclusion, include key data points, keep it to 2-5 sentences.
+   - **Notify** — if this is the final step and no further work is needed, use `notify.sh` from the debrief skill to send a concise notification to the user with your key findings. Lead with the conclusion, include key data points, keep it to 2-5 sentences. When sending notifications, write the message to a file first using `create` tool, then pass the file path: `bash notify.sh --file /path/to/msg.txt`. Do not pass inline message arguments — bash corrupts non-ASCII characters in command arguments.
    - **Dispatch** — if further work is needed by another squad, use the `swat_dispatch` MCP tool to hand off the next task with a clear brief and reference to this operation's findings.
    Never both. Never neither.
 
@@ -143,6 +143,7 @@ Generate `report.html` in the operation root. This is the **user-facing delivera
 
 **Requirements:**
 - **Single self-contained HTML file** — all CSS inlined, no external dependencies
+- **UTF-8 safety** — use `create`/`edit` tool to write report.html. NEVER use bash heredoc (`<< 'EOF'` or `<< 'PYEOF'`) or inline Python/bash scripts to generate files containing non-ASCII characters (Chinese, Japanese, Korean, etc.). Bash heredoc corrupts multi-byte UTF-8 sequences, producing garbled output (e.g. "sudo su" replacing Chinese text).
 - **Responsive** — readable on mobile and desktop (`<meta name="viewport">`)
 - **Result-oriented** — the reader wants answers, not a replay of your thought process
 - **Visually structured** — prefer tables, cards, and clear headings over long paragraphs
