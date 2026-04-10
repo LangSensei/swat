@@ -2,6 +2,9 @@
 name: protocol
 version: "2.0.0"
 description: Cognitive framework for operations — scientific method with phase-based execution
+dependencies:
+  skills: [knowledge-with-files, debrief]
+  mcps: []
 ---
 
 # Protocol — Cognitive Framework for Operations
