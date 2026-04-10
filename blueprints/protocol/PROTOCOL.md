@@ -1,3 +1,9 @@
+---
+name: protocol
+version: "2.0.0"
+description: Cognitive framework for operations — scientific method with phase-based execution
+---
+
 # Protocol — Cognitive Framework for Operations
 
 This protocol governs how you think and work. It is a cognitive framework — not rigid steps, but a structured approach to solving problems thoroughly.
