@@ -228,7 +228,7 @@ func (c *Commander) launchCopilot(op *Operation, opDir string) error {
 	return nil
 }
 
-// provision assembles AGENTS.md, copies skills and MCPs into the operation directory
+// provision assembles AGENTS.md, copies skills, hooks, squad snapshot, and MCPs into the operation directory
 func (c *Commander) provision(op *Operation, opDir string) error {
 	bpDir := filepath.Join(c.SwatRoot, "blueprints")
 	squadBP := filepath.Join(bpDir, "squads", op.Squad)
@@ -250,6 +250,12 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	agentsMD := assembleAgentsMD(string(manifest), string(protocol), op.Squad)
 	if err := os.WriteFile(filepath.Join(opDir, "AGENTS.md"), []byte(agentsMD), 0644); err != nil {
 		return fmt.Errorf("write AGENTS.md: %w", err)
+	}
+
+	// Copy squad blueprint snapshot to .squad/ (read-only reference)
+	squadSnapshotDir := filepath.Join(opDir, ".squad")
+	if err := copyDir(squadBP, squadSnapshotDir); err != nil {
+		return fmt.Errorf("copy squad snapshot: %w", err)
 	}
 
 	// Ensure squad runtime dir and INTEL.md exist
@@ -274,13 +280,27 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	}
 
 	// Copy skills (resolve dependencies recursively)
+	// Skill content (excluding hooks/) → .github/skills/<name>/
+	// Skill hooks/ → .github/hooks/ (merged across all skills)
 	skillsRoot := filepath.Join(c.SwatRoot, "blueprints", "skills")
 	resolvedSkills := c.resolveDependencies(op.Squad)
 	destSkillsDir := filepath.Join(opDir, ".github", "skills")
+	destHooksDir := filepath.Join(opDir, ".github", "hooks")
+	hooksExclude := map[string]bool{"hooks": true}
+
 	for _, skill := range resolvedSkills {
 		srcSkill := filepath.Join(skillsRoot, skill)
-		if _, err := os.Stat(srcSkill); err == nil {
-			copyDir(srcSkill, filepath.Join(destSkillsDir, skill))
+		if _, err := os.Stat(srcSkill); err != nil {
+			continue
+		}
+
+		// Copy skill content excluding hooks/
+		copyDirExclude(srcSkill, filepath.Join(destSkillsDir, skill), hooksExclude)
+
+		// Copy skill hooks if they exist
+		srcHooks := filepath.Join(srcSkill, "hooks")
+		if dirExists(srcHooks) {
+			copyDir(srcHooks, destHooksDir)
 		}
 	}
 
