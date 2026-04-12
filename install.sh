@@ -3,10 +3,15 @@ set -euo pipefail
 
 # SWAT v2 Installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/LangSensei/swat-v2/main/install.sh | bash
+#        curl -fsSL ... | bash -s -- --openclaw   # also install OpenClaw plugin/skill
 
 REPO="LangSensei/swat-v2"
 SWAT_HOME="$HOME/.swat"
 BIN_DIR="$HOME/.local/bin"
+OPENCLAW=false
+for arg in "$@"; do
+    [[ "$arg" == "--openclaw" ]] && OPENCLAW=true
+done
 
 # --- Safety: refuse to run as root ---
 if [[ "$(id -u)" -eq 0 ]]; then
@@ -258,7 +263,9 @@ post_install() {
         export PATH="$BIN_DIR:$PATH"
     fi
 
-    register_plugin
+    if $OPENCLAW; then
+        register_plugin
+    fi
 }
 
 # --- Cleanup ---
@@ -278,8 +285,10 @@ main() {
     check_prereqs
     fetch_release
     install_binary
-    install_plugin
-    install_skill
+    if $OPENCLAW; then
+        install_plugin
+        install_skill
+    fi
     install_blueprints
     setup_runtime
     post_install
@@ -290,9 +299,15 @@ main() {
 
     echo ""
     info "Next steps:"
-    echo "  1. Restart OpenClaw:  openclaw gateway restart"
-    echo "  2. Install a squad:   Tell your agent: \"browse SWAT marketplace and install a squad\""
-    echo "     Or use the tool directly: swat_browse → swat_install"
+    if $OPENCLAW; then
+        echo "  1. Restart OpenClaw:  openclaw gateway restart"
+        echo "  2. Install a squad:   Tell your agent: \"browse SWAT marketplace and install a squad\""
+        echo "     Or use the tool directly: swat_browse → swat_install"
+    else
+        echo "  1. Add to Copilot CLI .mcp.json:"
+        echo "     {\"mcpServers\":{\"swat\":{\"command\":\"$BIN_DIR/swat\",\"args\":[\"mcp\"]}}}"
+        echo "  2. Install a squad:   swat install <squad-name>"
+    fi
     echo ""
 }
 

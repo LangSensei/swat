@@ -1,11 +1,13 @@
 # SWAT v2 Installer for Windows
 # Usage: irm https://raw.githubusercontent.com/LangSensei/swat-v2/main/install.ps1 | iex
+#        powershell -File install.ps1 --openclaw   # also install OpenClaw plugin/skill
 
 $ErrorActionPreference = "Stop"
 
 $Repo = "LangSensei/swat-v2"
 $SwatHome = Join-Path $env:USERPROFILE ".swat"
 $BinDir = Join-Path $env:USERPROFILE ".local\bin"
+$OpenClaw = $args -contains "--openclaw"
 
 # --- Helpers ---
 
@@ -208,7 +210,9 @@ function Post-Install {
         Ok "Added $BinDir to user PATH"
     }
 
-    Register-Plugin
+    if ($OpenClaw) {
+        Register-Plugin
+    }
 }
 
 # --- Cleanup ---
@@ -229,8 +233,10 @@ Detect-Platform
 Check-Prereqs
 Fetch-Release
 Install-Binary
-Install-Plugin
-Install-Skill
+if ($OpenClaw) {
+    Install-Plugin
+    Install-Skill
+}
 Install-Blueprints
 Setup-Runtime
 Post-Install
@@ -240,7 +246,12 @@ Write-Host ""
 Ok "SWAT v2 installed successfully! 🚀"
 Write-Host ""
 Info "Next steps:"
-Write-Host "  1. Restart OpenClaw:  openclaw gateway restart"
-Write-Host "  2. Install a squad:   Tell your agent: `"browse SWAT marketplace and install a squad`""
-Write-Host "     Or use the tool directly: swat_browse -> swat_install"
+if ($OpenClaw) {
+    Write-Host "  1. Restart OpenClaw:  openclaw gateway restart"
+    Write-Host "  2. Install a squad:   Tell your agent: `"browse SWAT marketplace and install a squad`""
+} else {
+    Write-Host "  1. Add to Copilot CLI .mcp.json:"
+    Write-Host "     {`"mcpServers`":{`"swat`":{`"command`":`"$($BinDir -replace '\\','/')/swat.exe`",`"args`":[`"mcp`"]}}}"
+    Write-Host "  2. Install a squad:   swat install <squad-name>"
+}
 Write-Host ""
