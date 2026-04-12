@@ -42,7 +42,6 @@ ALL your files MUST go in this directory.
 
 Read AGENTS.md for the operation protocol.
 Read OPERATION.md for the full operation context.
-Read .github/skills/ for your methodology — create working files per skill instructions in your operator directory.
 ```
 
 After subagent completion, read their `operators/{role}/` files and synthesize findings into your own working files.
