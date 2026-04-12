@@ -275,5 +275,10 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 		}
 	}
 
+	// git init — Copilot CLI requires a git repo to discover .github/hooks/
+	gitInit := exec.Command("git", "init")
+	gitInit.Dir = opDir
+	gitInit.Run() // best-effort; hooks won't fire without it but operation can still proceed
+
 	return nil
 }
