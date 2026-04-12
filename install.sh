@@ -60,7 +60,6 @@ check_prereqs() {
         info "Warning: GitHub Copilot CLI not found. Required for running squads."
         info "  npm install -g @github/copilot"
     fi
-
 }
 
 # --- Download & Extract ---
