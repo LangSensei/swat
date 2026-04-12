@@ -48,11 +48,9 @@ jobs:
           PLATFORM="${{ matrix.goos }}-${{ matrix.goarch }}"
           TARBALL="swat-${TAG}-${PLATFORM}.tar.gz"
 
-          mkdir -p staging/plugin staging/skill staging/blueprints/squads/_framework
+          mkdir -p staging/blueprints/squads/_framework
 
           cp swat staging/
-          cp plugin/index.ts plugin/package.json plugin/openclaw.plugin.json staging/plugin/
-          cp skill/SKILL.md staging/skill/
           cp blueprints/OPERATION.md staging/blueprints/
           cp blueprints/squads/_framework/* staging/blueprints/squads/_framework/
 
@@ -66,11 +64,9 @@ jobs:
           PLATFORM="${{ matrix.goos }}-${{ matrix.goarch }}"
           ZIPFILE="swat-${TAG}-${PLATFORM}.zip"
 
-          mkdir -p staging/plugin staging/skill staging/blueprints/squads/_framework
+          mkdir -p staging/blueprints/squads/_framework
 
           cp swat.exe staging/
-          cp plugin/index.ts plugin/package.json plugin/openclaw.plugin.json staging/plugin/
-          cp skill/SKILL.md staging/skill/
           cp blueprints/OPERATION.md staging/blueprints/
           cp blueprints/squads/_framework/* staging/blueprints/squads/_framework/
 
