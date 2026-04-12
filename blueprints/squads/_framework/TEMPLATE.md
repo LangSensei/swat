@@ -27,9 +27,3 @@ dependencies:                      # omit block if no dependencies
 
 ## Squad Playbook
 {Domain knowledge, API endpoints, workflows, operational guidance. Use ### subsections to organize content — do not create additional ## sections.}
-
-## Output Schema
-Captain must fill these frontmatter fields in `OPERATION.md` during the operation:
-```yaml
-{field}: # {description}
-```
