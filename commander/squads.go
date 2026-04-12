@@ -6,8 +6,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 const marketplaceAPI = "https://api.github.com/repos/LangSensei/swat-marketplace"
@@ -324,6 +326,37 @@ func (c *Commander) cleanOrphans() {
 
 // --- GitHub API helpers ---
 
+// ghToken resolves a GitHub token once: GITHUB_TOKEN env → gh auth token CLI.
+var (
+	ghTokenOnce  sync.Once
+	ghTokenValue string
+)
+
+func resolveGHToken() string {
+	ghTokenOnce.Do(func() {
+		if t := os.Getenv("GITHUB_TOKEN"); t != "" {
+			ghTokenValue = t
+			return
+		}
+		if out, err := exec.Command("gh", "auth", "token").Output(); err == nil {
+			ghTokenValue = strings.TrimSpace(string(out))
+		}
+	})
+	return ghTokenValue
+}
+
+// ghHTTPGet performs an HTTP GET with optional GitHub auth.
+func ghHTTPGet(url string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if token := resolveGHToken(); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	return http.DefaultClient.Do(req)
+}
+
 type ghEntry struct {
 	Name string `json:"name"`
 	Type string `json:"type"` // "file" or "dir"
@@ -332,7 +365,7 @@ type ghEntry struct {
 
 func ghListDir(path string) ([]ghEntry, error) {
 	url := fmt.Sprintf("%s/contents/%s", marketplaceAPI, path)
-	resp, err := http.Get(url)
+	resp, err := ghHTTPGet(url)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +387,7 @@ func ghListDir(path string) ([]ghEntry, error) {
 
 func ghGetFile(path string) ([]byte, error) {
 	url := fmt.Sprintf("https://raw.githubusercontent.com/LangSensei/swat-marketplace/main/%s", path)
-	resp, err := http.Get(url)
+	resp, err := ghHTTPGet(url)
 	if err != nil {
 		return nil, err
 	}
