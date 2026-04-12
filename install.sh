@@ -61,7 +61,6 @@ check_prereqs() {
         info "  npm install -g @github/copilot"
     fi
 
-
 }
 
 # --- Download & Extract ---
