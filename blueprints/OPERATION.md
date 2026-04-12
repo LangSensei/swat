@@ -20,7 +20,6 @@ status: {STATUS}
 # 2-3 sentence summary of outcome
 summary: {SUMMARY}
 completed_at: {COMPLETED_AT}
-# {OUTPUT_SCHEMA}
 ---
 
 # {BRIEF}
@@ -30,9 +29,3 @@ completed_at: {COMPLETED_AT}
 
 ### Context
 [CLASSIFY: Historical context, related operations, key metrics from past runs]
-
-## Findings
-[CAPTAIN REQUIRED: Key discoveries, root cause, data points, impact assessment]
-
-## Action Items
-[CAPTAIN REQUIRED: Concrete recommendations, next steps, ownership]
