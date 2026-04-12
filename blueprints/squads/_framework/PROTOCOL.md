@@ -88,10 +88,4 @@ Generate `report.html` in the operation root. This is the **user-facing delivera
 
 ### 4. Notify
 
-Use the debrief skill to send results to the user. Lead with the conclusion, include key data points, keep it to 2-5 sentences.
-
-Write the message to a file first using `create` tool, then:
-- **Linux/macOS:** `bash notify.sh --file /path/to/msg.txt`
-- **Windows:** `pwsh notify.ps1 -File /path/to/msg.txt`
-
-Do not pass inline message arguments — shell tools corrupt non-ASCII characters.
+Read the debrief skill (`.github/skills/debrief/SKILL.md`) and follow its instructions to notify the user of results.
