@@ -48,7 +48,7 @@ SWAT exposes 10 MCP tools. Configure your agent to connect:
   "mcpServers": {
     "swat": {
       "command": "swat",
-      "args": ["mcp"]
+      "args": []
     }
   }
 }
