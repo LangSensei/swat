@@ -145,40 +145,6 @@ func parseDependencyList(md, field string) []string {
 	return nil
 }
 
-// assembleAgentsMD replaces placeholders in PROTOCOL.md with manifest sections
-func assembleAgentsMD(manifest, protocol, squadName string) string {
-	domain := extractSection(manifest, "## Domain")
-	boundary := extractSection(manifest, "## Boundary")
-	writeAccess := extractSection(manifest, "## Write Access")
-	playbook := extractSection(manifest, "## Squad Playbook")
-	version := extractFrontmatterField(manifest, "version")
-	if version == "" {
-		version = "1.0.0"
-	}
-
-	result := stripFrontmatter(protocol)
-	result = strings.ReplaceAll(result, "{SQUAD_NAME}", squadName)
-	result = strings.ReplaceAll(result, "{SQUAD_VERSION}", version)
-	result = strings.ReplaceAll(result, "{SQUAD_DOMAIN}", domain)
-	result = strings.ReplaceAll(result, "{SQUAD_BOUNDARY}", boundary)
-	result = strings.ReplaceAll(result, "{SQUAD_WRITE_ACCESS}", writeAccess)
-	result = strings.ReplaceAll(result, "{SQUAD_PLAYBOOK}", playbook)
-	return result
-}
-
-// extractSection extracts content under a markdown heading
-func extractSection(md, heading string) string {
-	idx := strings.Index(md, heading)
-	if idx < 0 {
-		return ""
-	}
-	content := md[idx+len(heading):]
-	if nextIdx := strings.Index(content, "\n## "); nextIdx >= 0 {
-		content = content[:nextIdx]
-	}
-	return strings.TrimSpace(content)
-}
-
 // extractFrontmatterField extracts a single field value from YAML frontmatter
 func extractFrontmatterField(md, field string) string {
 	if !strings.HasPrefix(md, "---") {
@@ -197,70 +163,4 @@ func extractFrontmatterField(md, field string) string {
 		}
 	}
 	return ""
-}
-
-// stripFrontmatter removes YAML frontmatter from a markdown document
-func stripFrontmatter(md string) string {
-	if !strings.HasPrefix(md, "---") {
-		return md
-	}
-	end := strings.Index(md[3:], "---")
-	if end < 0 {
-		return md
-	}
-	return strings.TrimLeft(md[end+6:], "\n")
-}
-
-// extractOutputSchema extracts YAML fields from the ## Output Schema section of a MANIFEST.md
-// It looks for the yaml code block and returns the field lines (without the ```yaml wrapper)
-func extractOutputSchema(manifest string) string {
-	body := stripFrontmatter(manifest)
-
-	// Find ## Output Schema section
-	idx := strings.Index(body, "## Output Schema")
-	if idx < 0 {
-		return ""
-	}
-	section := body[idx:]
-
-	// Find yaml code block
-	codeStart := strings.Index(section, "```yaml")
-	if codeStart < 0 {
-		return ""
-	}
-	afterOpen := section[codeStart+7:]
-
-	codeEnd := strings.Index(afterOpen, "```")
-	if codeEnd < 0 {
-		return ""
-	}
-
-	return strings.TrimSpace(afterOpen[:codeEnd])
-}
-
-// injectOutputSchema reads the squad MANIFEST, extracts Output Schema fields,
-// and replaces the {SQUAD_OUTPUT_SCHEMA} placeholder in OPERATION.md
-func (c *Commander) injectOutputSchema(squad string, opDir string) error {
-	manifestPath := filepath.Join(c.SwatRoot, "blueprints", "squads", squad, "MANIFEST.md")
-	manifest, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return fmt.Errorf("read manifest: %w", err)
-	}
-
-	schema := extractOutputSchema(string(manifest))
-
-	opMDPath := filepath.Join(opDir, "OPERATION.md")
-	content, err := os.ReadFile(opMDPath)
-	if err != nil {
-		return fmt.Errorf("read OPERATION.md: %w", err)
-	}
-
-	placeholder := "# {OUTPUT_SCHEMA}"
-	contentStr := string(content)
-	if !strings.Contains(contentStr, placeholder) {
-		return nil
-	}
-
-	replaced := strings.Replace(contentStr, placeholder, schema, 1)
-	return os.WriteFile(opMDPath, []byte(replaced), 0644)
 }

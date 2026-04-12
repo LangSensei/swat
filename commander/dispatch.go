@@ -136,13 +136,6 @@ func (c *Commander) processOperation(op *Operation) {
 		return
 	}
 
-	// Inject Output Schema from MANIFEST into OPERATION.md
-	if err := c.injectOutputSchema(reloaded.Squad, destDir); err != nil {
-		log.Printf("[dispatch] %s: failed to inject output schema: %v", op.OperationID, err)
-		c.failOperation(reloaded, fmt.Sprintf("inject output schema: %v", err))
-		return
-	}
-
 	// Provision and launch
 	if err := c.provision(reloaded, destDir); err != nil {
 		log.Printf("[dispatch] %s: provision failed: %v", op.OperationID, err)
@@ -190,7 +183,7 @@ func (c *Commander) Cancel(opID string) error {
 
 // launchCopilot starts a Copilot CLI process for the operation
 func (c *Commander) launchCopilot(op *Operation, opDir string) error {
-	prompt := "Begin operation. Read OPERATION.md for your task brief, then follow the protocol in AGENTS.md."
+	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
 
 	cmd := exec.Command("copilot", "-p", prompt, "--yolo", "--output-format", "json", "--effort", "xhigh")
 	cmd.Dir = opDir
@@ -228,28 +221,25 @@ func (c *Commander) launchCopilot(op *Operation, opDir string) error {
 	return nil
 }
 
-// provision assembles AGENTS.md, copies skills and MCPs into the operation directory
+// provision copies squad snapshot, skills, hooks, and protocol into the operation directory
 func (c *Commander) provision(op *Operation, opDir string) error {
 	bpDir := filepath.Join(c.SwatRoot, "blueprints")
 	squadBP := filepath.Join(bpDir, "squads", op.Squad)
 	frameworkDir := filepath.Join(bpDir, "squads", "_framework")
 
-	// Read squad manifest
-	manifest, err := os.ReadFile(filepath.Join(squadBP, "MANIFEST.md"))
-	if err != nil {
-		return fmt.Errorf("read manifest for squad %q: %w", op.Squad, err)
-	}
-
-	// Read protocol template
+	// Copy PROTOCOL.md → AGENTS.md (Copilot CLI auto-injects AGENTS.md)
 	protocol, err := os.ReadFile(filepath.Join(frameworkDir, "PROTOCOL.md"))
 	if err != nil {
 		return fmt.Errorf("read protocol: %w", err)
 	}
-
-	// Assemble and write AGENTS.md
-	agentsMD := assembleAgentsMD(string(manifest), string(protocol), op.Squad)
-	if err := os.WriteFile(filepath.Join(opDir, "AGENTS.md"), []byte(agentsMD), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(opDir, "AGENTS.md"), protocol, 0644); err != nil {
 		return fmt.Errorf("write AGENTS.md: %w", err)
+	}
+
+	// Copy squad blueprint snapshot to .squad/ (read-only reference)
+	squadSnapshotDir := filepath.Join(opDir, ".squad")
+	if err := copyDir(squadBP, squadSnapshotDir); err != nil {
+		return fmt.Errorf("copy squad snapshot: %w", err)
 	}
 
 	// Ensure squad runtime dir and INTEL.md exist
@@ -274,13 +264,27 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	}
 
 	// Copy skills (resolve dependencies recursively)
+	// Skill content (excluding hooks/) → .github/skills/<name>/
+	// Skill hooks/ → .github/hooks/ (merged across all skills)
 	skillsRoot := filepath.Join(c.SwatRoot, "blueprints", "skills")
 	resolvedSkills := c.resolveDependencies(op.Squad)
 	destSkillsDir := filepath.Join(opDir, ".github", "skills")
+	destHooksDir := filepath.Join(opDir, ".github", "hooks")
+	hooksExclude := map[string]bool{"hooks": true}
+
 	for _, skill := range resolvedSkills {
 		srcSkill := filepath.Join(skillsRoot, skill)
-		if _, err := os.Stat(srcSkill); err == nil {
-			copyDir(srcSkill, filepath.Join(destSkillsDir, skill))
+		if _, err := os.Stat(srcSkill); err != nil {
+			continue
+		}
+
+		// Copy skill content excluding hooks/
+		copyDirExclude(srcSkill, filepath.Join(destSkillsDir, skill), hooksExclude)
+
+		// Copy skill hooks if they exist
+		srcHooks := filepath.Join(srcSkill, "hooks")
+		if dirExists(srcHooks) {
+			copyDir(srcHooks, destHooksDir)
 		}
 	}
 

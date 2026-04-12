@@ -70,8 +70,8 @@ OpenClaw (HQ) → Bridge Plugin → SWAT Commander (Go MCP) → Squads (Copilot 
 ### How It Works
 
 1. You dispatch a task (Commander auto-classifies to the right squad)
-2. Commander composes the workspace — assembles AGENTS.md, resolves skill dependencies (BFS), generates `.mcp.json`
-3. Copilot CLI launches in the operation directory, reads OPERATION.md + AGENTS.md
+2. Commander provisions the workspace — copies squad snapshot to `.squad/`, skill hooks to `.github/hooks/`, skill content to `.github/skills/`, resolves MCP dependencies, writes AGENTS.md (protocol)
+3. Copilot CLI launches in the operation directory, reads AGENTS.md + OPERATION.md
 4. Commander's background loop scans for completion (OPERATION.md status + report.html)
 5. Results surface through OpenClaw
 
@@ -106,10 +106,13 @@ Built-in Go cron scheduler for recurring tasks — zero LLM cost:
 │       └── operations/
 │           └── <id>/              # Operation workspace
 │               ├── OPERATION.md
-│               ├── AGENTS.md
+│               ├── AGENTS.md      # Protocol (copied from _framework/PROTOCOL.md)
 │               ├── .mcp.json
 │               ├── report.html
-│               └── .github/skills/
+│               ├── .squad/        # Squad blueprint snapshot (read-only)
+│               └── .github/
+│                   ├── hooks/     # Skill hooks (Copilot CLI native)
+│                   └── skills/    # Skill content (SKILL.md + templates)
 │
 ├── schedules/                     # Schedule definitions (JSON)
 │   └── <id>.json
