@@ -22,6 +22,8 @@ jobs:
             goarch: amd64
           - goos: darwin
             goarch: arm64
+          - goos: windows
+            goarch: amd64
 
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +36,13 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build -ldflags "-X main.version=${{ github.ref_name }}" -o swat .
+        run: |
+          EXT=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then EXT=".exe"; fi
+          go build -ldflags "-X main.version=${{ github.ref_name }}" -o "swat${EXT}" .
 
-      - name: Package tarball
+      - name: Package (tar.gz for unix)
+        if: matrix.goos != 'windows'
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           PLATFORM="${{ matrix.goos }}-${{ matrix.goarch }}"
@@ -53,11 +59,29 @@ jobs:
           cd staging
           tar -czf "../${TARBALL}" .
 
+      - name: Package (zip for windows)
+        if: matrix.goos == 'windows'
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PLATFORM="${{ matrix.goos }}-${{ matrix.goarch }}"
+          ZIPFILE="swat-${TAG}-${PLATFORM}.zip"
+
+          mkdir -p staging/plugin staging/skill staging/blueprints/squads/_framework
+
+          cp swat.exe staging/
+          cp plugin/index.ts plugin/package.json plugin/openclaw.plugin.json staging/plugin/
+          cp skill/SKILL.md staging/skill/
+          cp blueprints/OPERATION.md staging/blueprints/
+          cp blueprints/squads/_framework/* staging/blueprints/squads/_framework/
+
+          cd staging
+          zip -r "../${ZIPFILE}" .
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: swat-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: swat-*.tar.gz
+          path: swat-*.*
 
   release:
     needs: build
@@ -71,4 +95,6 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: swat-*.tar.gz
+          files: |
+            swat-*.tar.gz
+            swat-*.zip
