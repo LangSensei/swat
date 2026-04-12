@@ -374,6 +374,9 @@ func ghListDir(path string) ([]ghEntry, error) {
 	if resp.StatusCode == 404 {
 		return nil, fmt.Errorf("path %q not found in marketplace", path)
 	}
+	if resp.StatusCode == 403 {
+		return nil, fmt.Errorf("GitHub API rate limited (403) — install gh CLI or set GITHUB_TOKEN")
+	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
 	}
