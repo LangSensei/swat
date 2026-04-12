@@ -88,6 +88,10 @@ Generate `report.html` in the operation root. This is the **user-facing delivera
 
 ### 4. Notify
 
-Use the debrief skill (`notify.sh`) to send results to the user. Lead with the conclusion, include key data points, keep it to 2-5 sentences.
+Use the debrief skill to send results to the user. Lead with the conclusion, include key data points, keep it to 2-5 sentences.
 
-When sending notifications, write the message to a file first using `create` tool, then pass the file path: `bash notify.sh --file /path/to/msg.txt`. Do not pass inline message arguments — bash corrupts non-ASCII characters.
+Write the message to a file first using `create` tool, then:
+- **Linux/macOS:** `bash notify.sh --file /path/to/msg.txt`
+- **Windows:** `pwsh notify.ps1 -File /path/to/msg.txt`
+
+Do not pass inline message arguments — shell tools corrupt non-ASCII characters.
