@@ -190,7 +190,7 @@ func (c *Commander) Cancel(opID string) error {
 
 // launchCopilot starts a Copilot CLI process for the operation
 func (c *Commander) launchCopilot(op *Operation, opDir string) error {
-	prompt := "Begin operation. Read OPERATION.md for your task brief, then follow the protocol in AGENTS.md."
+	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
 
 	cmd := exec.Command("copilot", "-p", prompt, "--yolo", "--output-format", "json", "--effort", "xhigh")
 	cmd.Dir = opDir
@@ -234,21 +234,12 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	squadBP := filepath.Join(bpDir, "squads", op.Squad)
 	frameworkDir := filepath.Join(bpDir, "squads", "_framework")
 
-	// Read squad manifest
-	manifest, err := os.ReadFile(filepath.Join(squadBP, "MANIFEST.md"))
-	if err != nil {
-		return fmt.Errorf("read manifest for squad %q: %w", op.Squad, err)
-	}
-
-	// Read protocol template
+	// Copy PROTOCOL.md → AGENTS.md (Copilot CLI auto-injects AGENTS.md)
 	protocol, err := os.ReadFile(filepath.Join(frameworkDir, "PROTOCOL.md"))
 	if err != nil {
 		return fmt.Errorf("read protocol: %w", err)
 	}
-
-	// Assemble and write AGENTS.md
-	agentsMD := assembleAgentsMD(string(manifest), string(protocol), op.Squad)
-	if err := os.WriteFile(filepath.Join(opDir, "AGENTS.md"), []byte(agentsMD), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(opDir, "AGENTS.md"), protocol, 0644); err != nil {
 		return fmt.Errorf("write AGENTS.md: %w", err)
 	}
 
