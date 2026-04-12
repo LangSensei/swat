@@ -54,6 +54,7 @@ After subagent completion, read their `operators/{role}/` files and synthesize f
 - **File encoding** — always UTF-8. Prefer built-in tools (`create`, `edit`) over inline scripts for file operations.
 - **Timestamps** — always UTC in ISO 8601 format (`YYYY-MM-DDTHH:MM:SSZ`).
 - **Shell escaping** — `$` in double-quoted bash strings is interpreted by bash. Use single quotes to protect `$`: single-quote URLs containing `$filter`/`$top`, and use `pwsh -Command '...'` for inline PowerShell.
+- **Temporary files** — all temp/scratch files go in `temp/` under the operation root. Create it if it doesn't exist. Never write to system temp directories (`/tmp`, `%TEMP%`, `os.tmpdir()`).
 - **UTF-8 safety** — NEVER use bash heredoc (`<< 'EOF'`) to generate files containing non-ASCII characters (CJK, etc.). Bash heredoc corrupts multi-byte UTF-8 sequences.
 
 ## Complete
