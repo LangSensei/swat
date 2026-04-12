@@ -221,7 +221,7 @@ func (c *Commander) launchCopilot(op *Operation, opDir string) error {
 	return nil
 }
 
-// provision assembles AGENTS.md, copies skills, hooks, squad snapshot, and MCPs into the operation directory
+// provision copies squad snapshot, skills, hooks, and protocol into the operation directory
 func (c *Commander) provision(op *Operation, opDir string) error {
 	bpDir := filepath.Join(c.SwatRoot, "blueprints")
 	squadBP := filepath.Join(bpDir, "squads", op.Squad)

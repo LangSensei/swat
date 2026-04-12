@@ -14,7 +14,7 @@ squad: {SQUAD}
 # e.g., [{type: "operation", value: "../20260309-xxxx/"}]
 references: {REFERENCES}
 
-# ── CAPTAIN (fill during execution) ──
+# ── OPERATOR (fill during execution) ──
 # queued → active → completed / failed
 status: {STATUS}
 # 2-3 sentence summary of outcome
