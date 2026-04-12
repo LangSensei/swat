@@ -40,16 +40,6 @@ function Check-Prereqs {
         exit 1
     }
 
-    if (Get-Command gh -ErrorAction SilentlyContinue) {
-        $authOk = gh auth status 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Warn "GitHub CLI not authenticated. Run before using SWAT:"
-            Info "  gh auth login"
-        }
-    } else {
-        Warn "GitHub CLI (gh) not found. Required for Copilot CLI auth."
-        Info "  Install: https://cli.github.com"
-    }
 
     if (-not (Get-Command copilot -ErrorAction SilentlyContinue)) {
         Warn "GitHub Copilot CLI not found. Required for running squads."
