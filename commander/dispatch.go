@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -240,18 +239,6 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	squadSnapshotDir := filepath.Join(opDir, ".squad")
 	if err := copyDir(squadBP, squadSnapshotDir); err != nil {
 		return fmt.Errorf("copy squad snapshot: %w", err)
-	}
-
-	// Ensure squad runtime dir and INTEL.md exist
-	squadDir := c.SquadDir(op.Squad)
-	squadIntel := filepath.Join(squadDir, "INTEL.md")
-	if !fileExists(squadIntel) {
-		templateIntel := filepath.Join(frameworkDir, "INTEL.md")
-		if data, err := os.ReadFile(templateIntel); err == nil {
-			initialized := strings.ReplaceAll(string(data), "{SQUAD_NAME}", op.Squad)
-			os.MkdirAll(squadDir, 0755)
-			os.WriteFile(squadIntel, []byte(initialized), 0644)
-		}
 	}
 
 	// Compose .mcp.json from resolved MCP dependencies
