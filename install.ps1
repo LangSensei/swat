@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 
 $Repo = "LangSensei/swat"
 $SwatHome = Join-Path $env:USERPROFILE ".swat"
-$BinDir = Join-Path $env:USERPROFILE ".local\bin"
+$BinDir = Join-Path $env:USERPROFILE ".swat\bin"
 
 # --- Helpers ---
 

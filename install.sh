@@ -6,7 +6,7 @@ set -euo pipefail
 
 REPO="LangSensei/swat"
 SWAT_HOME="$HOME/.swat"
-BIN_DIR="$HOME/.local/bin"
+BIN_DIR="$HOME/.swat/bin"
 
 # --- Safety: refuse to run as root ---
 if [[ "$(id -u)" -eq 0 ]]; then

@@ -5,7 +5,7 @@ set -euo pipefail
 # Usage: curl -fsSL https://raw.githubusercontent.com/LangSensei/swat/main/uninstall.sh | bash
 
 SWAT_HOME="$HOME/.swat"
-BIN_DIR="$HOME/.local/bin"
+BIN_DIR="$HOME/.swat/bin"
 
 info()  { echo -e "\033[0;36m[swat]\033[0m $*"; }
 ok()    { echo -e "\033[0;32m[swat]\033[0m $*"; }
