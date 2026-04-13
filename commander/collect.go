@@ -2,9 +2,7 @@ package commander
 
 import (
 	"log"
-	"os"
 	"path/filepath"
-	"syscall"
 	"time"
 )
 
@@ -87,18 +85,4 @@ func (c *Commander) ShouldReview() bool {
 	}
 	return false
 }
-
-func processAlive(pid int) bool {
-	if pid == 0 {
-		return false
-	}
-	// Signal(nil) broken in Go 1.24: pidfd path returns "unsupported signal type".
-	// Signal(syscall.Signal(0)) correctly maps to kill(pid, 0) via pidfd_send_signal.
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return p.Signal(syscall.Signal(0)) == nil
-}
-
 
