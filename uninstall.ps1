@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 
 $SwatHome = Join-Path $env:USERPROFILE ".swat"
-$BinDir = Join-Path $env:USERPROFILE ".local\bin"
+$BinDir = Join-Path $env:USERPROFILE ".swat\bin"
 
 function Info  { param($Msg) Write-Host "[swat] $Msg" -ForegroundColor Cyan }
 function Ok    { param($Msg) Write-Host "[swat] $Msg" -ForegroundColor Green }
