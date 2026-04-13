@@ -60,11 +60,11 @@ func (c *Commander) processOperation(op *Operation) {
 			"Read OPERATION.md in the current directory for the task. "+
 			"Read all MANIFEST.md files under %s (skip _framework) to find available squads. "+
 			"Read past operations under %s for historical context. "+
-			"Your job:\n"+
-			"1. Choose the best squad and update the 'squad' field in OPERATION.md frontmatter.\n"+
-			"2. If you find relevant historical operations, add them to the 'references' field as [{type: \"operation\", value: \"path\"}].\n"+
-			"3. Write enrichment to the `### Context` section (under ## Assignment). Keep the ## Assignment text intact. Write historical context, related operation findings, and key metrics into ### Context, replacing the `[CLASSIFY: ...]` placeholder.\n"+
-			"If no squad is a good fit for the task, leave the squad field empty.\n"+
+			"Your job: "+
+			"1. Choose the best squad and update the 'squad' field in OPERATION.md frontmatter. "+
+			"2. If you find relevant historical operations, add them to the 'references' field as [{type: \"operation\", value: \"path\"}]. "+
+			"3. Write enrichment to the `### Context` section (under ## Assignment). Keep the ## Assignment text intact. Write historical context, related operation findings, and key metrics into ### Context, replacing the `[CLASSIFY: ...]` placeholder. "+
+			"If no squad is a good fit for the task, leave the squad field empty. "+
 			"Do NOT modify any other frontmatter fields besides 'squad' and 'references'.",
 		filepath.Join(c.SwatRoot, "blueprints", "squads"),
 		filepath.Join(c.SwatRoot, "squads"),
