@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/LangSensei/swat/commander"
+	"github.com/LangSensei/swat/commander/operation"
+	"github.com/LangSensei/swat/commander/schedule"
+	"github.com/LangSensei/swat/commander/squads"
 )
 
 // JSON-RPC types
@@ -179,7 +182,7 @@ func (s *Server) handleDispatch(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleList(args map[string]interface{}) toolResult {
-	ops, err := s.Commander.ListOperations()
+	ops, err := operation.List()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
@@ -195,7 +198,7 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 
 	statusFilter, _ := args["status"].(string)
 	if statusFilter != "" {
-		var filtered []*commander.Operation
+		var filtered []*operation.Operation
 		for _, op := range ops {
 			if op.Status == statusFilter {
 				filtered = append(filtered, op)
@@ -208,7 +211,7 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 	sinceStr, _ := args["since"].(string)
 	if sinceStr != "" {
 		if sinceTime, err := time.Parse(time.RFC3339, sinceStr); err == nil {
-			var filtered []*commander.Operation
+			var filtered []*operation.Operation
 			for _, op := range ops {
 				if op.CompletedAt != nil && op.CompletedAt.After(sinceTime) {
 					filtered = append(filtered, op)
@@ -256,7 +259,7 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 }
 
 // opSortTime returns the most relevant timestamp for sorting (newest event first)
-func opSortTime(op *commander.Operation) time.Time {
+func opSortTime(op *operation.Operation) time.Time {
 	if op.CompletedAt != nil {
 		return *op.CompletedAt
 	}
@@ -291,19 +294,19 @@ func (s *Server) handleCancel(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleSquads(args map[string]interface{}) toolResult {
-	squads, err := s.Commander.ListSquads()
+	installed, err := squads.List()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list squads failed: %v", err)}},
 			IsError: true,
 		}
 	}
-	if len(squads) == 0 {
+	if len(installed) == 0 {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: "no squads installed"}},
 		}
 	}
-	data, _ := json.MarshalIndent(squads, "", "  ")
+	data, _ := json.MarshalIndent(installed, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}
@@ -316,7 +319,7 @@ func (s *Server) handleScheduleCreate(args map[string]interface{}) toolResult {
 	tz, _ := args["timezone"].(string)
 	immediate, _ := args["immediate"].(bool)
 
-	sched, err := s.Commander.CreateSchedule(brief, details, cronExpr, tz, immediate)
+	sched, err := schedule.Create(brief, details, cronExpr, tz, immediate)
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule failed: %v", err)}},
@@ -330,7 +333,7 @@ func (s *Server) handleScheduleCreate(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleScheduleList(args map[string]interface{}) toolResult {
-	schedules, err := s.Commander.ListSchedules()
+	schedules, err := schedule.List()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
@@ -351,7 +354,7 @@ func (s *Server) handleScheduleDelete(args map[string]interface{}) toolResult {
 			IsError: true,
 		}
 	}
-	if err := s.Commander.DeleteSchedule(id); err != nil {
+	if err := schedule.Delete(id); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("delete failed: %v", err)}},
 			IsError: true,
@@ -371,7 +374,7 @@ func (s *Server) handleInstall(args map[string]interface{}) toolResult {
 		}
 	}
 
-	prereqs, err := s.Commander.Install(squad)
+	prereqs, err := squads.Install(squad)
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("install failed: %v", err)}},
@@ -404,7 +407,7 @@ func (s *Server) handleUninstall(args map[string]interface{}) toolResult {
 
 	purge, _ := args["purge"].(bool)
 
-	if err := s.Commander.Uninstall(squad, purge); err != nil {
+	if err := squads.Uninstall(squad, purge); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("uninstall failed: %v", err)}},
 			IsError: true,
@@ -421,7 +424,7 @@ func (s *Server) handleUninstall(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleBrowse(args map[string]interface{}) toolResult {
-	results, err := s.Commander.Browse()
+	results, err := squads.Browse()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("browse failed: %v", err)}},
@@ -448,7 +451,7 @@ func (s *Server) handleUpdate(args map[string]interface{}) toolResult {
 		}
 	}
 
-	if err := s.Commander.Update(squad); err != nil {
+	if err := squads.Update(squad); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("update failed: %v", err)}},
 			IsError: true,

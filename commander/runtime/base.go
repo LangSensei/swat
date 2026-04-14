@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/LangSensei/swat/commander/layout"
+	"github.com/LangSensei/swat/commander/platform"
 )
 
 // BaseProvisioner provides shared provisioning logic used across all runtime adapters.
@@ -32,100 +36,102 @@ func (b *BaseProvisioner) ComposeAgentFile(opDir string, content []byte) error {
 	return nil
 }
 
-// ComposeMCPConfig writes the server entries into the MCP config file at
-// MCPConfigPath(). If the file already exists, other top-level fields (e.g.
-// hooks) are preserved, but mcpServers is replaced entirely.
-func (b *BaseProvisioner) ComposeMCPConfig(opDir string, servers map[string]interface{}) error {
-	dest := filepath.Join(opDir, b.mcpConfigPath)
+// ComposeMCPConfig reads MCP blueprint JSON files, injects runtime/notify args
+// into the swat server entry, and writes the combined config to the operation dir.
+func (b *BaseProvisioner) ComposeMCPConfig(opDir, runtimeName, notifyName string, mcps []string) error {
+	servers := make(map[string]interface{})
+	mcpsDir := layout.BlueprintMCPsDir()
 
-	// Ensure parent directory exists
+	for _, name := range mcps {
+		path := filepath.Join(mcpsDir, name+".json")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		raw := strings.TrimSpace(string(data))
+
+		if name == "swat" {
+			raw = injectSwatArgs(raw, runtimeName, notifyName)
+		}
+
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+			continue
+		}
+		servers[name] = parsed
+	}
+
+	if len(servers) == 0 {
+		return nil
+	}
+
+	dest := filepath.Join(opDir, b.mcpConfigPath)
 	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
 		return fmt.Errorf("create dir for %s: %w", b.mcpConfigPath, err)
 	}
 
-	// Read existing config (or start with empty object)
-	existing := make(map[string]interface{})
-	if data, err := os.ReadFile(dest); err == nil {
-		if err := json.Unmarshal(data, &existing); err != nil {
-			return fmt.Errorf("parse existing %s: %w", b.mcpConfigPath, err)
-		}
+	config := map[string]interface{}{
+		"mcpServers": servers,
 	}
-
-	// Set mcpServers (written once, no merge needed)
-	existing["mcpServers"] = servers
-
-	out, err := json.MarshalIndent(existing, "", "  ")
+	out, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", b.mcpConfigPath, err)
 	}
 	out = append(out, '\n')
-	if err := os.WriteFile(dest, out, 0644); err != nil {
-		return fmt.Errorf("write %s: %w", b.mcpConfigPath, err)
+	return os.WriteFile(dest, out, 0644)
+}
+
+// injectSwatArgs adds --runtime and --notify flags to a swat MCP server JSON config.
+func injectSwatArgs(raw, runtimeName, notifyName string) string {
+	var obj map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+		return raw
 	}
-	return nil
+	var existing []string
+	if args, ok := obj["args"]; ok {
+		if arr, ok := args.([]interface{}); ok {
+			for _, a := range arr {
+				if s, ok := a.(string); ok {
+					existing = append(existing, s)
+				}
+			}
+		}
+	}
+	if runtimeName != "" {
+		existing = append(existing, "--runtime", runtimeName)
+	}
+	if notifyName != "" {
+		existing = append(existing, "--notify", notifyName)
+	}
+	obj["args"] = existing
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return raw
+	}
+	return string(out)
 }
 
 // ComposeSquad copies the squad blueprint snapshot into opDir/.squad/.
 func (b *BaseProvisioner) ComposeSquad(squadBPDir, opDir string) error {
 	destDir := filepath.Join(opDir, ".squad")
-	if err := copyDir(squadBPDir, destDir); err != nil {
+	if err := platform.CopyDir(squadBPDir, destDir); err != nil {
 		return fmt.Errorf("copy squad snapshot: %w", err)
 	}
 	return nil
 }
 
 // ComposeSkills copies resolved skill content into the runtime's dotDir.
-// Only skill content (SKILL.md, etc.) is copied to <dotDir>/skills/<name>/.
-// The hooks/ subdirectory is excluded entirely — hooks are handled by ComposeHooks.
+// The hooks/ subdirectory is excluded — hooks are handled by ComposeHooks.
 func (b *BaseProvisioner) ComposeSkills(skillsRoot string, resolvedSkills []string, opDir string) error {
-	destSkillsDir := filepath.Join(opDir, b.dotDir, "skills")
-
 	for _, skill := range resolvedSkills {
 		srcSkill := filepath.Join(skillsRoot, skill)
 		if _, err := os.Stat(srcSkill); err != nil {
 			continue
 		}
-
-		dest := filepath.Join(destSkillsDir, skill)
-		if err := filepath.Walk(srcSkill, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			rel, _ := filepath.Rel(srcSkill, path)
-			if info.IsDir() && info.Name() == "hooks" && rel != "." {
-				return filepath.SkipDir
-			}
-			target := filepath.Join(dest, rel)
-			if info.IsDir() {
-				return os.MkdirAll(target, 0755)
-			}
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			return os.WriteFile(target, data, info.Mode())
-		}); err != nil {
+		dest := filepath.Join(opDir, b.dotDir, "skills", skill)
+		if err := platform.CopyDirExclude(srcSkill, dest, "hooks"); err != nil {
 			return fmt.Errorf("copy skill %s: %w", skill, err)
 		}
 	}
 	return nil
-}
-
-// copyDir recursively copies a directory tree.
-func copyDir(src, dst string) error {
-	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(src, path)
-		target := filepath.Join(dst, rel)
-		if info.IsDir() {
-			return os.MkdirAll(target, 0755)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, info.Mode())
-	})
 }
