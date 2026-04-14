@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/gofrs/flock"
 )
 
 // GeminiAdapter implements RuntimeAdapter for the Google Gemini CLI.
@@ -44,6 +46,12 @@ func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 	}
 
 	trustedPath := filepath.Join(geminiDir, "trustedFolders.json")
+
+	fileLock := flock.New(trustedPath + ".lock")
+	if err := fileLock.Lock(); err != nil {
+		return fmt.Errorf("acquire lock: %w", err)
+	}
+	defer fileLock.Unlock()
 
 	folders := make(map[string]string)
 	data, err := os.ReadFile(trustedPath)
