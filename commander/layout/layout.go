@@ -5,17 +5,10 @@ import (
 	"path/filepath"
 )
 
-var root string
-
-// Init sets the swat root directory. Must be called once at startup.
-func Init(swatRoot string) {
-	if len(swatRoot) >= 2 && swatRoot[:2] == "~/" {
-		if home, err := os.UserHomeDir(); err == nil {
-			swatRoot = filepath.Join(home, swatRoot[2:])
-		}
-	}
-	root = swatRoot
-}
+var root = func() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".swat")
+}()
 
 // Root returns the swat root directory.
 func Root() string { return root }

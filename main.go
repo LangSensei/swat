@@ -38,7 +38,7 @@ func main() {
 		}
 	}
 
-	cmdr := commander.New("~/.swat", runtimeName, notifyBackend)
+	cmdr := commander.New(runtimeName, notifyBackend)
 	if !mcpOnly {
 		go cmdr.BackgroundLoop(60 * time.Second)
 		log.Println("SWAT Commander starting...")

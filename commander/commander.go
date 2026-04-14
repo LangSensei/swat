@@ -24,8 +24,7 @@ type Commander struct {
 }
 
 // New creates a new Commander instance
-func New(swatRoot, runtimeName, notifyBackend string) *Commander {
-	layout.Init(swatRoot)
+func New(runtimeName, notifyBackend string) *Commander {
 	layout.EnsureDirs()
 
 	n, err := notify.New(notifyBackend)
