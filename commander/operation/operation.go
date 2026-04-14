@@ -105,7 +105,7 @@ func List() ([]*Operation, error) {
 		if !se.IsDir() {
 			continue
 		}
-		opsDir := layout.SquadDir(se.Name()) + "/operations"
+		opsDir := layout.OperationsDir(se.Name())
 		opEntries, err := os.ReadDir(opsDir)
 		if err != nil {
 			continue

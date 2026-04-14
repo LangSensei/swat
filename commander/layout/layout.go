@@ -42,6 +42,11 @@ func BlueprintMCPsDir() string { return filepath.Join(root, "blueprints", "mcps"
 // SquadDir returns the runtime directory for a squad.
 func SquadDir(squad string) string { return filepath.Join(root, "squads", squad) }
 
+// OperationsDir returns the operations directory for a squad.
+func OperationsDir(squad string) string {
+	return filepath.Join(root, "squads", squad, "operations")
+}
+
 // UnclassifiedOperationsDir returns the base directory for unclassified operations.
 func UnclassifiedOperationsDir() string {
 	return filepath.Join(root, "squads", "_unclassified", "operations")
