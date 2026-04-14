@@ -23,15 +23,6 @@ func NewCopilotAdapter() *CopilotAdapter {
 // Name returns "copilot".
 func (a *CopilotAdapter) Name() string { return "copilot" }
 
-// DotDir returns ".github".
-func (a *CopilotAdapter) DotDir() string { return a.BaseProvisioner.dotDir }
-
-// AgentFileName returns "AGENTS.md".
-func (a *CopilotAdapter) AgentFileName() string { return a.BaseProvisioner.agentFileName }
-
-// MCPConfigPath returns ".mcp.json".
-func (a *CopilotAdapter) MCPConfigPath() string { return a.BaseProvisioner.mcpConfigPath }
-
 // PrepareWorkspace runs workspace initialization for the given phase.
 // During PhaseOperate it runs git init so that Copilot CLI can discover .github/hooks/.
 // During PhaseClassify no initialization is needed.

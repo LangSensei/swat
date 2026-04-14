@@ -195,7 +195,6 @@ func (c *Commander) Cancel(opID string) error {
 
 // launchAgent starts a runtime agent process for the operation
 func (c *Commander) launchAgent(rt runtime.RuntimeAdapter, op *Operation, opDir string) error {
-
 	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
 	cmd := rt.BuildCommand(prompt, opDir)
 
@@ -269,7 +268,9 @@ func (c *Commander) provision(rt runtime.RuntimeAdapter, op *Operation, opDir st
 	}
 
 	// Prepare workspace for operate phase (full setup, e.g. git init for hook discovery)
-	rt.PrepareWorkspace(opDir, runtime.PhaseOperate)
+	if err := rt.PrepareWorkspace(opDir, runtime.PhaseOperate); err != nil {
+		log.Printf("[provision] PrepareWorkspace (operate): %v", err)
+	}
 
 	return nil
 }

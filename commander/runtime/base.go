@@ -13,6 +13,15 @@ type BaseProvisioner struct {
 	mcpConfigPath string
 }
 
+// DotDir returns the runtime-specific dot directory (e.g. ".github").
+func (b *BaseProvisioner) DotDir() string { return b.dotDir }
+
+// AgentFileName returns the runtime-specific agent file name (e.g. "AGENTS.md").
+func (b *BaseProvisioner) AgentFileName() string { return b.agentFileName }
+
+// MCPConfigPath returns the runtime-specific MCP config path (e.g. ".mcp.json").
+func (b *BaseProvisioner) MCPConfigPath() string { return b.mcpConfigPath }
+
 // WriteAgentFile writes the agent instruction content to the appropriate file in opDir.
 func (b *BaseProvisioner) WriteAgentFile(opDir string, content []byte) error {
 	dest := filepath.Join(opDir, b.agentFileName)
