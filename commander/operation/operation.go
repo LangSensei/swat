@@ -20,14 +20,9 @@ func NewStore(swatRoot string) *Store {
 	return &Store{SwatRoot: swatRoot}
 }
 
-// UnclassifiedDir returns the base directory for unclassified operations.
-func (s *Store) UnclassifiedDir() string {
-	return filepath.Join(s.SwatRoot, "squads", "_unclassified", "operations")
-}
-
 // UnclassifiedOperationDir returns the directory for a specific unclassified operation.
 func (s *Store) UnclassifiedOperationDir(opID string) string {
-	return filepath.Join(s.UnclassifiedDir(), opID)
+	return filepath.Join(s.SwatRoot, "squads", "_unclassified", "operations", opID)
 }
 
 // UnclassifiedOperationMDPath returns the OPERATION.md path for an unclassified operation.
