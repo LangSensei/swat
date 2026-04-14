@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 
 	"github.com/gofrs/flock"
@@ -158,8 +159,15 @@ func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 }
 
 // BuildCommand constructs the Gemini CLI command with standard flags.
+// On Windows, wraps via "cmd /c" to provide a console for node-pty (ConPTY).
 func (a *GeminiAdapter) BuildCommand(prompt, workDir string) *exec.Cmd {
-	cmd := exec.Command("gemini", "-p", prompt, "--yolo", "--output-format", "json")
+	var cmd *exec.Cmd
+	if goruntime.GOOS == "windows" {
+		args := fmt.Sprintf(`gemini -p "%s" --yolo --output-format json`, prompt)
+		cmd = exec.Command("cmd", "/c", args)
+	} else {
+		cmd = exec.Command("gemini", "-p", prompt, "--yolo", "--output-format", "json")
+	}
 	cmd.Dir = workDir
 	return cmd
 }
