@@ -191,8 +191,12 @@ main() {
     info "Next steps:"
     echo "  1. Add SWAT MCP server to your agent config:"
     echo "     {\"mcpServers\":{\"swat\":{\"command\":\"swat\",\"args\":[]}}}"
-    echo "  2. Switch runtime: swat --runtime <name> (default: copilot)"
-    echo "  3. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
+    echo ""
+    echo "  Options (add to args):"
+    echo "     --runtime <name>   Agent runtime: copilot (default), gemini"
+    echo "     --notify <backend> Notifications: desktop (default)"
+    echo ""
+    echo "  2. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
     echo ""
 }
 
