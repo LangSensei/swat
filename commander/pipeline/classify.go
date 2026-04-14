@@ -15,12 +15,9 @@ import (
 )
 
 // Classify runs the LLM-based classify+enrich step on an unclassified operation.
-// It returns the reloaded operation (with Squad set) and the destination directory,
-// or an error if classification fails.
-func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, store *operation.Store, swatRoot string, notifier notify.Notifier) (*operation.Operation, string, error) {
-	unclassifiedDir := store.UnclassifiedOperationDir(op.OperationID)
+func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, paths operation.PathResolver, blueprintsRoot, swatRoot string, notifier notify.Notifier) (*operation.Operation, string, error) {
+	unclassifiedDir := paths.UnclassifiedOperationDir(op.OperationID)
 
-	// Prepare workspace for classify phase (lightweight, no git init)
 	if err := rt.PrepareWorkspace(unclassifiedDir, runtime.PhaseClassify); err != nil {
 		return nil, "", fmt.Errorf("prepare workspace (classify): %v", err)
 	}
@@ -62,8 +59,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, store *operati
 		log.Printf("[classify] %s: classify copilot completed successfully", op.OperationID)
 	}
 
-	// Re-read OPERATION.md after classify
-	reloaded, err := store.LoadUnclassified(op.OperationID)
+	reloaded, err := operation.LoadUnclassified(paths, op.OperationID)
 	if err != nil {
 		return nil, "", fmt.Errorf("reload after classify: %v", err)
 	}
@@ -77,7 +73,6 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, store *operati
 		return nil, "", fmt.Errorf("classify failed: no squad assigned")
 	}
 
-	// Validate squad exists in blueprints
 	manifestPath := filepath.Join(swatRoot, "blueprints", "squads", reloaded.Squad, "MANIFEST.md")
 	if !platform.FileExists(manifestPath) {
 		if notifier != nil {
@@ -86,8 +81,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, store *operati
 		return nil, "", fmt.Errorf("classify assigned unknown squad: %s", reloaded.Squad)
 	}
 
-	// Move from _unclassified to squad operations dir
-	destDir := store.OperationDir(reloaded.Squad, op.OperationID)
+	destDir := paths.OperationDir(reloaded.Squad, op.OperationID)
 	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
 		return nil, "", fmt.Errorf("create squad dir: %v", err)
 	}
@@ -98,7 +92,6 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, store *operati
 	return reloaded, destDir, nil
 }
 
-// listSquadSummaries returns a formatted string of installed squads.
 func listSquadSummaries(swatRoot string) string {
 	entries, err := os.ReadDir(filepath.Join(swatRoot, "blueprints", "squads"))
 	if err != nil {

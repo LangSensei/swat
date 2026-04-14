@@ -18,7 +18,6 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, ru
 	squadBP := filepath.Join(bpDir, "squads", op.Squad)
 	frameworkDir := filepath.Join(bpDir, "squads", "_framework")
 
-	// Copy PROTOCOL.md → agent file (runtime-specific name, e.g. AGENTS.md for Copilot)
 	protocol, err := os.ReadFile(filepath.Join(frameworkDir, "PROTOCOL.md"))
 	if err != nil {
 		return fmt.Errorf("read protocol: %w", err)
@@ -27,12 +26,10 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, ru
 		return err
 	}
 
-	// Copy squad blueprint snapshot to .squad/ (read-only reference)
 	if err := rt.ComposeSquad(squadBP, opDir); err != nil {
 		return err
 	}
 
-	// Compose MCP config from resolved MCP dependencies
 	resolvedMCPs := deps.ResolveMCPDependencies(swatRoot, op.Squad)
 	servers := ComposeMCPConfig(swatRoot, runtimeName, notifyBackend, resolvedMCPs)
 	if len(servers) > 0 {
@@ -41,19 +38,16 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, ru
 		}
 	}
 
-	// Copy skill content (resolve dependencies recursively)
 	skillsRoot := filepath.Join(swatRoot, "blueprints", "skills")
 	resolvedSkills := deps.ResolveDependencies(swatRoot, op.Squad)
 	if err := rt.ComposeSkills(skillsRoot, resolvedSkills, opDir); err != nil {
 		return err
 	}
 
-	// Copy runtime-specific hooks from resolved skills
 	if err := rt.ComposeHooks(skillsRoot, resolvedSkills, opDir); err != nil {
 		return err
 	}
 
-	// Prepare workspace for operate phase (full setup, e.g. git init for hook discovery)
 	if err := rt.PrepareWorkspace(opDir, runtime.PhaseOperate); err != nil {
 		log.Printf("[provision] PrepareWorkspace (operate): %v", err)
 	}
@@ -62,7 +56,7 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, ru
 }
 
 // LaunchAgent starts a runtime agent process for the operation.
-func LaunchAgent(rt runtime.RuntimeAdapter, op *operation.Operation, opDir string, store *operation.Store) error {
+func LaunchAgent(rt runtime.RuntimeAdapter, op *operation.Operation, opDir string, paths operation.PathResolver, blueprintsRoot string) error {
 	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
 	cmd := rt.BuildCommand(prompt, opDir)
 
@@ -84,13 +78,12 @@ func LaunchAgent(rt runtime.RuntimeAdapter, op *operation.Operation, opDir strin
 	op.PID = cmd.Process.Pid
 	op.DispatchedAt = &now
 
-	if err := store.Save(op); err != nil {
+	if err := operation.Save(paths, blueprintsRoot, op); err != nil {
 		cmd.Process.Kill()
 		logFile.Close()
 		return err
 	}
 
-	// Fire and forget — reap process to avoid zombie
 	go func() {
 		defer logFile.Close()
 		cmd.Wait()

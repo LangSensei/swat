@@ -15,11 +15,10 @@ import (
 
 // Commander is the core orchestrator
 type Commander struct {
-	SwatRoot      string
+	Layout        *Layout
 	RuntimeName   string
 	NotifyBackend string
 	Notifier      notify.Notifier
-	Store         *operation.Store
 
 	// Internal state for background loop
 	iteration      int
@@ -35,13 +34,15 @@ func New(swatRoot, runtimeName, notifyBackend string) *Commander {
 		}
 	}
 
+	layout := &Layout{Root: swatRoot}
+
 	// Ensure directory structure exists
 	for _, dir := range []string{
 		swatRoot,
-		filepath.Join(swatRoot, "blueprints"),
-		filepath.Join(swatRoot, "blueprints", "squads"),
-		filepath.Join(swatRoot, "blueprints", "skills"),
-		filepath.Join(swatRoot, "blueprints", "mcps"),
+		layout.BlueprintsDir(),
+		filepath.Join(layout.BlueprintsDir(), "squads"),
+		layout.SkillsDir(),
+		layout.MCPsDir(),
 		filepath.Join(swatRoot, "squads"),
 		filepath.Join(swatRoot, "squads", "_unclassified", "operations"),
 	} {
@@ -56,11 +57,10 @@ func New(swatRoot, runtimeName, notifyBackend string) *Commander {
 	}
 
 	return &Commander{
-		SwatRoot:      swatRoot,
+		Layout:        layout,
 		RuntimeName:   runtimeName,
 		NotifyBackend: notifyBackend,
 		Notifier:      n,
-		Store:         operation.NewStore(swatRoot),
 		RetryCount:    make(map[string]int),
 	}
 }
@@ -73,10 +73,12 @@ func GenerateOpID() string {
 	return fmt.Sprintf("%s-%x", now.Format("20060102"), b)
 }
 
-// ListOperations delegates to the operation Store.
+// ListOperations returns all operations across all squads.
 func (c *Commander) ListOperations() ([]*operation.Operation, error) {
-	return c.Store.List()
+	return operation.List(c.Layout, c.Layout.SquadsDir())
 }
+
+// BackgroundLoop runs the Commander's periodic scan.
 func (c *Commander) BackgroundLoop(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -93,7 +95,7 @@ func (c *Commander) BackgroundLoop(interval time.Duration) {
 
 // scan checks all operations for state transitions.
 func (c *Commander) scan() {
-	ops, err := c.Store.List()
+	ops, err := c.ListOperations()
 	if err != nil {
 		log.Printf("[scan] error: %v", err)
 		return
@@ -101,8 +103,7 @@ func (c *Commander) scan() {
 	c.recentFailures = 0
 	for _, op := range ops {
 		if op.Status == "active" {
-			pipeline.HandleActive(op, c.Store, c.Notifier)
-			// Track long-running
+			pipeline.HandleActive(op, c.Layout, c.Layout.BlueprintsDir(), c.Notifier)
 			if op.DispatchedAt != nil && time.Since(*op.DispatchedAt) > 30*time.Minute {
 				c.recentFailures++
 			}
@@ -118,7 +119,7 @@ func (c *Commander) shouldReview() bool {
 	if c.recentFailures > 0 {
 		return true
 	}
-	ops, _ := c.Store.List()
+	ops, _ := c.ListOperations()
 	for _, op := range ops {
 		if op.Status == "active" && op.DispatchedAt != nil {
 			if time.Since(*op.DispatchedAt) > 30*time.Minute {
