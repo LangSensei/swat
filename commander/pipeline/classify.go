@@ -33,7 +33,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 			"3. Write enrichment to the `### Context` section (under ## Assignment). Keep the ## Assignment text intact. Write historical context, related operation findings, and key metrics into ### Context, replacing the `[CLASSIFY: ...]` placeholder. "+
 			"If no squad is a good fit for the task, leave the squad field empty. "+
 			"Do NOT modify any other frontmatter fields besides 'squad' and 'references'.",
-		filepath.Join(layout.BlueprintDir(), "squads"),
+		layout.BlueprintSquadsDir(),
 		layout.SquadsDir(),
 	)
 
