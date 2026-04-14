@@ -2,7 +2,6 @@ package platform
 
 import (
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -25,9 +24,4 @@ func FileContains(path, substr string) bool {
 		return false
 	}
 	return strings.Contains(string(data), substr)
-}
-
-// ExecCommand creates an exec.Cmd
-func ExecCommand(name string, args ...string) *exec.Cmd {
-	return exec.Command(name, args...)
 }
