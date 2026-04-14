@@ -10,73 +10,67 @@ var root = func() string {
 	return filepath.Join(home, ".swat")
 }()
 
-// Root returns the swat root directory.
+// --- Root ---
+
+// Root returns the swat root directory (~/.swat).
 func Root() string { return root }
 
-// --- Blueprint (templates) ---
+// --- Blueprints (templates) ---
 
 // BlueprintDir returns the blueprints base directory.
 func BlueprintDir() string { return filepath.Join(root, "blueprints") }
 
 // BlueprintSquadsDir returns the blueprints/squads directory.
-func BlueprintSquadsDir() string { return filepath.Join(root, "blueprints", "squads") }
+func BlueprintSquadsDir() string { return filepath.Join(BlueprintDir(), "squads") }
 
 // BlueprintSquadDir returns the blueprint directory for a specific squad.
-func BlueprintSquadDir(squad string) string {
-	return filepath.Join(root, "blueprints", "squads", squad)
-}
+func BlueprintSquadDir(squad string) string { return filepath.Join(BlueprintSquadsDir(), squad) }
 
 // BlueprintFrameworkDir returns the _framework blueprint directory.
-func BlueprintFrameworkDir() string {
-	return filepath.Join(root, "blueprints", "squads", "_framework")
-}
+func BlueprintFrameworkDir() string { return BlueprintSquadDir("_framework") }
 
 // BlueprintSkillsDir returns the blueprints/skills directory.
-func BlueprintSkillsDir() string { return filepath.Join(root, "blueprints", "skills") }
+func BlueprintSkillsDir() string { return filepath.Join(BlueprintDir(), "skills") }
 
 // BlueprintMCPsDir returns the blueprints/mcps directory.
-func BlueprintMCPsDir() string { return filepath.Join(root, "blueprints", "mcps") }
+func BlueprintMCPsDir() string { return filepath.Join(BlueprintDir(), "mcps") }
 
-// --- Runtime ---
+// --- Runtime (squads + operations) ---
+
+// SquadsDir returns the runtime squads base directory.
+func SquadsDir() string { return filepath.Join(root, "squads") }
 
 // SquadDir returns the runtime directory for a squad.
-func SquadDir(squad string) string { return filepath.Join(root, "squads", squad) }
+func SquadDir(squad string) string { return filepath.Join(SquadsDir(), squad) }
 
 // OperationsDir returns the operations directory for a squad.
-func OperationsDir(squad string) string {
-	return filepath.Join(root, "squads", squad, "operations")
-}
+func OperationsDir(squad string) string { return filepath.Join(SquadDir(squad), "operations") }
 
-// UnclassifiedOperationsDir returns the base directory for unclassified operations.
-func UnclassifiedOperationsDir() string {
-	return filepath.Join(root, "squads", "_unclassified", "operations")
-}
+// OperationDir returns the directory for a specific operation.
+func OperationDir(squad, opID string) string { return filepath.Join(OperationsDir(squad), opID) }
 
-// UnclassifiedOperationDir returns the directory for a specific unclassified operation.
-func UnclassifiedOperationDir(opID string) string {
-	return filepath.Join(root, "squads", "_unclassified", "operations", opID)
-}
-
-// UnclassifiedOperationMDPath returns the OPERATION.md path for an unclassified operation.
-func UnclassifiedOperationMDPath(opID string) string {
-	return filepath.Join(UnclassifiedOperationDir(opID), "OPERATION.md")
-}
-
-// OperationDir returns the directory for a classified operation.
-func OperationDir(squad, opID string) string {
-	return filepath.Join(root, "squads", squad, "operations", opID)
-}
-
-// OperationMDPath returns the OPERATION.md path for a classified operation.
+// OperationMDPath returns the OPERATION.md path for an operation.
 func OperationMDPath(squad, opID string) string {
 	return filepath.Join(OperationDir(squad, opID), "OPERATION.md")
 }
 
+// --- Unclassified (special squad) ---
+
+// UnclassifiedOperationsDir returns the base directory for unclassified operations.
+func UnclassifiedOperationsDir() string { return OperationsDir("_unclassified") }
+
+// UnclassifiedOperationDir returns the directory for a specific unclassified operation.
+func UnclassifiedOperationDir(opID string) string { return OperationDir("_unclassified", opID) }
+
+// UnclassifiedOperationMDPath returns the OPERATION.md path for an unclassified operation.
+func UnclassifiedOperationMDPath(opID string) string { return OperationMDPath("_unclassified", opID) }
+
+// --- Schedules ---
+
 // SchedulesDir returns the schedules directory.
 func SchedulesDir() string { return filepath.Join(root, "schedules") }
 
-// SquadsDir returns the runtime squads base directory.
-func SquadsDir() string { return filepath.Join(root, "squads") }
+// --- Init ---
 
 // EnsureDirs creates the standard directory structure.
 func EnsureDirs() {
