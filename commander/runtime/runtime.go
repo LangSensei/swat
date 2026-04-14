@@ -64,6 +64,8 @@ func New(name string) (RuntimeAdapter, error) {
 	switch name {
 	case "copilot":
 		return NewCopilotAdapter(), nil
+	case "gemini":
+		return NewGeminiAdapter(), nil
 	default:
 		return nil, fmt.Errorf("unknown runtime: %q", name)
 	}
