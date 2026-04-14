@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/LangSensei/swat/commander/layout"
+	"github.com/LangSensei/swat/commander/platform"
 )
 
 // BaseProvisioner provides shared provisioning logic used across all runtime adapters.
@@ -49,7 +50,6 @@ func (b *BaseProvisioner) ComposeMCPConfig(opDir, runtimeName, notifyName string
 		}
 		raw := strings.TrimSpace(string(data))
 
-		// Inject --runtime and --notify into the swat server entry
 		if name == "swat" {
 			raw = injectSwatArgs(raw, runtimeName, notifyName)
 		}
@@ -70,13 +70,10 @@ func (b *BaseProvisioner) ComposeMCPConfig(opDir, runtimeName, notifyName string
 		return fmt.Errorf("create dir for %s: %w", b.mcpConfigPath, err)
 	}
 
-	existing := make(map[string]interface{})
-	if data, err := os.ReadFile(dest); err == nil {
-		json.Unmarshal(data, &existing)
+	config := map[string]interface{}{
+		"mcpServers": servers,
 	}
-	existing["mcpServers"] = servers
-
-	out, err := json.MarshalIndent(existing, "", "  ")
+	out, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", b.mcpConfigPath, err)
 	}
@@ -117,64 +114,24 @@ func injectSwatArgs(raw, runtimeName, notifyName string) string {
 // ComposeSquad copies the squad blueprint snapshot into opDir/.squad/.
 func (b *BaseProvisioner) ComposeSquad(squadBPDir, opDir string) error {
 	destDir := filepath.Join(opDir, ".squad")
-	if err := copyDir(squadBPDir, destDir); err != nil {
+	if err := platform.CopyDir(squadBPDir, destDir); err != nil {
 		return fmt.Errorf("copy squad snapshot: %w", err)
 	}
 	return nil
 }
 
 // ComposeSkills copies resolved skill content into the runtime's dotDir.
-// Only skill content (SKILL.md, etc.) is copied to <dotDir>/skills/<name>/.
-// The hooks/ subdirectory is excluded entirely — hooks are handled by ComposeHooks.
+// The hooks/ subdirectory is excluded — hooks are handled by ComposeHooks.
 func (b *BaseProvisioner) ComposeSkills(skillsRoot string, resolvedSkills []string, opDir string) error {
-	destSkillsDir := filepath.Join(opDir, b.dotDir, "skills")
-
 	for _, skill := range resolvedSkills {
 		srcSkill := filepath.Join(skillsRoot, skill)
 		if _, err := os.Stat(srcSkill); err != nil {
 			continue
 		}
-
-		dest := filepath.Join(destSkillsDir, skill)
-		if err := filepath.Walk(srcSkill, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			rel, _ := filepath.Rel(srcSkill, path)
-			if info.IsDir() && info.Name() == "hooks" && rel != "." {
-				return filepath.SkipDir
-			}
-			target := filepath.Join(dest, rel)
-			if info.IsDir() {
-				return os.MkdirAll(target, 0755)
-			}
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			return os.WriteFile(target, data, info.Mode())
-		}); err != nil {
+		dest := filepath.Join(opDir, b.dotDir, "skills", skill)
+		if err := platform.CopyDirExclude(srcSkill, dest, "hooks"); err != nil {
 			return fmt.Errorf("copy skill %s: %w", skill, err)
 		}
 	}
 	return nil
-}
-
-// copyDir recursively copies a directory tree.
-func copyDir(src, dst string) error {
-	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(src, path)
-		target := filepath.Join(dst, rel)
-		if info.IsDir() {
-			return os.MkdirAll(target, 0755)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, info.Mode())
-	})
 }

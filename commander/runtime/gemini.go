@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gofrs/flock"
+	"github.com/LangSensei/swat/commander/platform"
 )
 
 // GeminiAdapter implements RuntimeAdapter for the Google Gemini CLI.
@@ -49,7 +50,7 @@ func (a *GeminiAdapter) ComposeHooks(skillsRoot string, resolvedSkills []string,
 		}
 
 		// Copy entire hooks/gemini/ directory to .gemini/hooks/
-		if err := copyDir(srcHooks, destHooksDir); err != nil {
+		if err := platform.CopyDir(srcHooks, destHooksDir); err != nil {
 			return fmt.Errorf("copy hooks for skill %s: %w", skill, err)
 		}
 

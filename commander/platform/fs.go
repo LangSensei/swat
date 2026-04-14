@@ -2,6 +2,7 @@ package platform
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -24,4 +25,36 @@ func FileContains(path, substr string) bool {
 		return false
 	}
 	return strings.Contains(string(data), substr)
+}
+
+// CopyDir recursively copies a directory tree.
+func CopyDir(src, dst string) error {
+	return CopyDirExclude(src, dst)
+}
+
+// CopyDirExclude recursively copies a directory tree, skipping directories
+// whose names match any of the provided exclude list.
+func CopyDirExclude(src, dst string, exclude ...string) error {
+	excludeSet := make(map[string]bool, len(exclude))
+	for _, e := range exclude {
+		excludeSet[e] = true
+	}
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, path)
+		if info.IsDir() && rel != "." && excludeSet[info.Name()] {
+			return filepath.SkipDir
+		}
+		target := filepath.Join(dst, rel)
+		if info.IsDir() {
+			return os.MkdirAll(target, 0755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, info.Mode())
+	})
 }

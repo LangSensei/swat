@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"github.com/LangSensei/swat/commander/platform"
 )
 
 // CopilotAdapter implements RuntimeAdapter for the GitHub Copilot CLI.
@@ -39,7 +40,7 @@ func (a *CopilotAdapter) ComposeHooks(skillsRoot string, resolvedSkills []string
 			continue
 		}
 
-		if err := copyDir(srcHooks, destHooksDir); err != nil {
+		if err := platform.CopyDir(srcHooks, destHooksDir); err != nil {
 			return fmt.Errorf("compose hooks for skill %s: %w", skill, err)
 		}
 	}
