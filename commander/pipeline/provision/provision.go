@@ -15,9 +15,9 @@ import (
 
 // Run copies squad snapshot, skills, hooks, and protocol into the operation directory.
 func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, runtimeName, notifyBackend string) error {
-	squadBP := layout.SquadBlueprintDir(op.Squad)
+	squadBP := layout.BlueprintSquadDir(op.Squad)
 
-	protocol, err := os.ReadFile(filepath.Join(layout.FrameworkDir(), "PROTOCOL.md"))
+	protocol, err := os.ReadFile(filepath.Join(layout.BlueprintFrameworkDir(), "PROTOCOL.md"))
 	if err != nil {
 		return fmt.Errorf("read protocol: %w", err)
 	}
@@ -38,11 +38,11 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, ru
 	}
 
 	resolvedSkills := deps.ResolveDependencies(swatRoot, op.Squad)
-	if err := rt.ComposeSkills(layout.SkillsDir(), resolvedSkills, opDir); err != nil {
+	if err := rt.ComposeSkills(layout.BlueprintSkillsDir(), resolvedSkills, opDir); err != nil {
 		return err
 	}
 
-	if err := rt.ComposeHooks(layout.SkillsDir(), resolvedSkills, opDir); err != nil {
+	if err := rt.ComposeHooks(layout.BlueprintSkillsDir(), resolvedSkills, opDir); err != nil {
 		return err
 	}
 

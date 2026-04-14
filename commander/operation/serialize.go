@@ -14,7 +14,7 @@ import (
 // buildOperationFile reads blueprints/OPERATION.md as a template and replaces
 // placeholders with values from the Operation struct.
 func buildOperationFile(op *Operation) (string, error) {
-	tmplPath := filepath.Join(layout.BlueprintsDir(), "OPERATION.md")
+	tmplPath := filepath.Join(layout.BlueprintDir(), "OPERATION.md")
 	tmplData, err := os.ReadFile(tmplPath)
 	if err != nil {
 		return "", fmt.Errorf("read operation template: %w", err)

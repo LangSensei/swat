@@ -34,7 +34,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 			"3. Write enrichment to the `### Context` section (under ## Assignment). Keep the ## Assignment text intact. Write historical context, related operation findings, and key metrics into ### Context, replacing the `[CLASSIFY: ...]` placeholder. "+
 			"If no squad is a good fit for the task, leave the squad field empty. "+
 			"Do NOT modify any other frontmatter fields besides 'squad' and 'references'.",
-		filepath.Join(layout.BlueprintsDir(), "squads"),
+		filepath.Join(layout.BlueprintDir(), "squads"),
 		layout.SquadsDir(),
 	)
 
@@ -74,7 +74,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 		return nil, "", fmt.Errorf("classify failed: no squad assigned")
 	}
 
-	manifestPath := filepath.Join(layout.SquadBlueprintDir(reloaded.Squad), "MANIFEST.md")
+	manifestPath := filepath.Join(layout.BlueprintSquadDir(reloaded.Squad), "MANIFEST.md")
 	if !platform.FileExists(manifestPath) {
 		if notifier != nil {
 			notifier.Notify(fmt.Sprintf("Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s", reloaded.Squad, op.OperationID, op.Brief))
@@ -94,7 +94,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 }
 
 func listSquadSummaries() string {
-	entries, err := os.ReadDir(filepath.Join(layout.BlueprintsDir(), "squads"))
+	entries, err := os.ReadDir(filepath.Join(layout.BlueprintDir(), "squads"))
 	if err != nil {
 		return "(none installed)"
 	}
@@ -105,7 +105,7 @@ func listSquadSummaries() string {
 		}
 		name := entry.Name()
 		desc := "(no description)"
-		manifestPath := filepath.Join(layout.SquadBlueprintDir(name), "MANIFEST.md")
+		manifestPath := filepath.Join(layout.BlueprintSquadDir(name), "MANIFEST.md")
 		if data, err := os.ReadFile(manifestPath); err == nil {
 			if d := deps.ExtractFrontmatterField(string(data), "description"); d != "" {
 				desc = d
