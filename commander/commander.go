@@ -11,6 +11,7 @@ import (
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
+	"github.com/LangSensei/swat/commander/schedule"
 )
 
 // Commander is the core orchestrator
@@ -52,7 +53,7 @@ func (c *Commander) BackgroundLoop(interval time.Duration) {
 
 	for range ticker.C {
 		c.scan()
-		c.CheckDue()
+		schedule.CheckDue(c.dispatchForSchedule)
 	}
 }
 
@@ -100,3 +101,11 @@ func (c *Commander) handleActive(op *operation.Operation) {
 	}
 }
 
+// dispatchForSchedule adapts Dispatch for use as schedule.DispatchFunc.
+func (c *Commander) dispatchForSchedule(brief, details string) (string, error) {
+	op, err := c.Dispatch(brief, details)
+	if err != nil {
+		return "", err
+	}
+	return op.OperationID, nil
+}

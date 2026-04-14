@@ -12,6 +12,7 @@ import (
 
 	"github.com/LangSensei/swat/commander"
 	"github.com/LangSensei/swat/commander/operation"
+	"github.com/LangSensei/swat/commander/schedule"
 	"github.com/LangSensei/swat/commander/squads"
 )
 
@@ -318,7 +319,7 @@ func (s *Server) handleScheduleCreate(args map[string]interface{}) toolResult {
 	tz, _ := args["timezone"].(string)
 	immediate, _ := args["immediate"].(bool)
 
-	sched, err := s.Commander.CreateSchedule(brief, details, cronExpr, tz, immediate)
+	sched, err := schedule.Create(brief, details, cronExpr, tz, immediate)
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule failed: %v", err)}},
@@ -332,7 +333,7 @@ func (s *Server) handleScheduleCreate(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleScheduleList(args map[string]interface{}) toolResult {
-	schedules, err := s.Commander.ListSchedules()
+	schedules, err := schedule.List()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
@@ -353,7 +354,7 @@ func (s *Server) handleScheduleDelete(args map[string]interface{}) toolResult {
 			IsError: true,
 		}
 	}
-	if err := s.Commander.DeleteSchedule(id); err != nil {
+	if err := schedule.Delete(id); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("delete failed: %v", err)}},
 			IsError: true,
