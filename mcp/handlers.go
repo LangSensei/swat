@@ -181,7 +181,7 @@ func (s *Server) handleDispatch(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleList(args map[string]interface{}) toolResult {
-	ops, err := s.Commander.ListOperations()
+	ops, err := operation.List()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},

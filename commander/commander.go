@@ -47,11 +47,6 @@ func GenerateOpID() string {
 	return fmt.Sprintf("%s-%x", now.Format("20060102"), b)
 }
 
-// ListOperations returns all operations across all squads.
-func (c *Commander) ListOperations() ([]*operation.Operation, error) {
-	return operation.List()
-}
-
 // BackgroundLoop runs the Commander's periodic scan.
 func (c *Commander) BackgroundLoop(interval time.Duration) {
 	ticker := time.NewTicker(interval)
@@ -64,7 +59,7 @@ func (c *Commander) BackgroundLoop(interval time.Duration) {
 }
 
 func (c *Commander) scan() {
-	ops, err := c.ListOperations()
+	ops, err := operation.List()
 	if err != nil {
 		log.Printf("[scan] error: %v", err)
 		return

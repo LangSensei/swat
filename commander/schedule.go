@@ -139,7 +139,7 @@ func (c *Commander) CheckDue() {
 
 	// Build set of schedule IDs with in-flight operations
 	inFlight := make(map[string]bool)
-	ops, _ := c.ListOperations()
+	ops, _ := operation.List()
 	for _, op := range ops {
 		if op.Status == "queued" || op.Status == "active" {
 			if strings.HasPrefix(op.Source, "schedule/") {
