@@ -156,7 +156,7 @@ func Install(squad string) ([]SkillPrereq, error) {
 		return nil, fmt.Errorf("squad %q not found in marketplace", squad)
 	}
 
-	allSkills := deps.ResolveDependencies(squad)
+	allSkills := deps.ResolveSkillDependencies(squad)
 
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(layout.BlueprintSkillsDir(), skill)
@@ -168,7 +168,7 @@ func Install(squad string) ([]SkillPrereq, error) {
 		}
 	}
 
-	allMCPs := deps.ResolveMCPDependencies(squad)
+	allMCPs := deps.ResolveMCPDependencies(squad, allSkills)
 
 	for _, mcp := range allMCPs {
 		destMCP := filepath.Join(layout.BlueprintMCPsDir(), mcp+".json")
@@ -204,7 +204,7 @@ func Update(squad string) error {
 		return fmt.Errorf("download squad %q: %w", squad, err)
 	}
 
-	allSkills := deps.ResolveDependencies(squad)
+	allSkills := deps.ResolveSkillDependencies(squad)
 
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(layout.BlueprintSkillsDir(), skill)
@@ -214,7 +214,7 @@ func Update(squad string) error {
 		}
 	}
 
-	allMCPs := deps.ResolveMCPDependencies(squad)
+	allMCPs := deps.ResolveMCPDependencies(squad, allSkills)
 
 	for _, mcp := range allMCPs {
 		destMCP := filepath.Join(layout.BlueprintMCPsDir(), mcp+".json")
@@ -267,10 +267,11 @@ func CleanOrphans() {
 
 	for _, sq := range installed {
 		name := sq["name"]
-		for _, skill := range deps.ResolveDependencies(name) {
+		skills := deps.ResolveSkillDependencies(name)
+		for _, skill := range skills {
 			neededSkills[skill] = true
 		}
-		for _, mcp := range deps.ResolveMCPDependencies(name) {
+		for _, mcp := range deps.ResolveMCPDependencies(name, skills) {
 			neededMCPs[mcp] = true
 		}
 	}

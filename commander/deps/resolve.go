@@ -7,8 +7,8 @@ import (
 	"github.com/LangSensei/swat/commander/layout"
 )
 
-// ResolveDependencies recursively resolves all skill dependencies for a squad.
-func ResolveDependencies(squad string) []string {
+// ResolveSkillDependencies recursively resolves all skill dependencies for a squad.
+func ResolveSkillDependencies(squad string) []string {
 	visited := make(map[string]bool)
 	var result []string
 
@@ -44,36 +44,30 @@ func ResolveDependencies(squad string) []string {
 	return result
 }
 
-// ResolveMCPDependencies collects all MCP names from protocol, manifest, and transitive skills.
-func ResolveMCPDependencies(squad string) []string {
+// ResolveMCPDependencies collects all MCP names from protocol, manifest, and resolved skills.
+func ResolveMCPDependencies(squad string, resolvedSkills []string) []string {
 	seen := make(map[string]bool)
 	var result []string
 
-	if data, err := os.ReadFile(filepath.Join(layout.BlueprintFrameworkDir(), "PROTOCOL.md")); err == nil {
+	collect := func(data []byte) {
 		for _, m := range ParseDependencyList(string(data), "mcps") {
 			if !seen[m] {
 				seen[m] = true
 				result = append(result, m)
 			}
 		}
+	}
+
+	if data, err := os.ReadFile(filepath.Join(layout.BlueprintFrameworkDir(), "PROTOCOL.md")); err == nil {
+		collect(data)
 	}
 	if data, err := os.ReadFile(filepath.Join(layout.BlueprintSquadDir(squad), "MANIFEST.md")); err == nil {
-		for _, m := range ParseDependencyList(string(data), "mcps") {
-			if !seen[m] {
-				seen[m] = true
-				result = append(result, m)
-			}
-		}
+		collect(data)
 	}
-	for _, skill := range ResolveDependencies(squad) {
+	for _, skill := range resolvedSkills {
 		skillMD := filepath.Join(layout.BlueprintSkillsDir(), skill, "SKILL.md")
 		if data, err := os.ReadFile(skillMD); err == nil {
-			for _, m := range ParseDependencyList(string(data), "mcps") {
-				if !seen[m] {
-					seen[m] = true
-					result = append(result, m)
-				}
-			}
+			collect(data)
 		}
 	}
 	return result

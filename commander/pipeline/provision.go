@@ -29,12 +29,13 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, runtimeName,
 		return err
 	}
 
-	resolvedMCPs := deps.ResolveMCPDependencies(op.Squad)
+	resolvedSkills := deps.ResolveSkillDependencies(op.Squad)
+	resolvedMCPs := deps.ResolveMCPDependencies(op.Squad, resolvedSkills)
+
 	if err := rt.ComposeMCPConfig(opDir, runtimeName, notify, resolvedMCPs); err != nil {
 		return err
 	}
 
-	resolvedSkills := deps.ResolveDependencies(op.Squad)
 	if err := rt.ComposeSkills(layout.BlueprintSkillsDir(), resolvedSkills, opDir); err != nil {
 		return err
 	}

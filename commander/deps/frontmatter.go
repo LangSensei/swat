@@ -2,8 +2,9 @@ package deps
 
 import "strings"
 
-// ParseDependencyList extracts a dependency list from frontmatter, e.g. "skills: [a, b]".
-func ParseDependencyList(md, field string) []string {
+// parseFrontmatter extracts YAML frontmatter key-value pairs from markdown.
+// Returns nil if no valid frontmatter block is found.
+func parseFrontmatter(md string) map[string]string {
 	if !strings.HasPrefix(md, "---") {
 		return nil
 	}
@@ -12,64 +13,60 @@ func ParseDependencyList(md, field string) []string {
 		return nil
 	}
 	fm := md[4 : end+3]
+	result := make(map[string]string)
 	for _, line := range strings.Split(fm, "\n") {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, field+":") {
-			val := strings.TrimSpace(strings.TrimPrefix(trimmed, field+":"))
-			val = strings.Trim(val, "[]")
-			if val == "" {
-				return nil
-			}
-			var result []string
-			for _, d := range strings.Split(val, ",") {
-				d = strings.TrimSpace(d)
-				if d != "" {
-					result = append(result, d)
-				}
-			}
-			return result
+		idx := strings.Index(trimmed, ":")
+		if idx < 0 {
+			continue
+		}
+		key := strings.TrimSpace(trimmed[:idx])
+		val := strings.TrimSpace(trimmed[idx+1:])
+		if key != "" {
+			result[key] = val
 		}
 	}
-	return nil
+	return result
+}
+
+// ParseDependencyList extracts a dependency list from frontmatter, e.g. "skills: [a, b]".
+func ParseDependencyList(md, field string) []string {
+	fm := parseFrontmatter(md)
+	if fm == nil {
+		return nil
+	}
+	val, ok := fm[field]
+	if !ok {
+		return nil
+	}
+	val = strings.Trim(val, "[]")
+	if val == "" {
+		return nil
+	}
+	var result []string
+	for _, d := range strings.Split(val, ",") {
+		d = strings.TrimSpace(d)
+		if d != "" {
+			result = append(result, d)
+		}
+	}
+	return result
 }
 
 // ExtractFrontmatterField extracts a single field value from YAML frontmatter.
+// Strips surrounding single and double quotes.
 func ExtractFrontmatterField(md, field string) string {
-	if !strings.HasPrefix(md, "---") {
+	fm := parseFrontmatter(md)
+	if fm == nil {
 		return ""
 	}
-	end := strings.Index(md[3:], "\n---")
-	if end < 0 {
+	val, ok := fm[field]
+	if !ok {
 		return ""
 	}
-	fm := md[4 : end+3]
-	for _, line := range strings.Split(fm, "\n") {
-		if strings.HasPrefix(line, field+":") {
-			val := strings.TrimSpace(strings.TrimPrefix(line, field+":"))
-			val = strings.Trim(val, "\"")
-			return val
-		}
-	}
-	return ""
+	return strings.Trim(val, "\"'")
 }
 
-// ParseFrontmatterValue extracts a single string value from frontmatter (trims quotes).
-func ParseFrontmatterValue(md, field string) string {
-	if !strings.HasPrefix(md, "---") {
-		return ""
-	}
-	end := strings.Index(md[3:], "\n---")
-	if end < 0 {
-		return ""
-	}
-	fm := md[4 : end+3]
-	for _, line := range strings.Split(fm, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, field+":") {
-			val := strings.TrimSpace(strings.TrimPrefix(trimmed, field+":"))
-			val = strings.Trim(val, "\"'")
-			return val
-		}
-	}
-	return ""
-}
+// ParseFrontmatterValue is an alias for ExtractFrontmatterField.
+// Deprecated: use ExtractFrontmatterField directly.
+var ParseFrontmatterValue = ExtractFrontmatterField
