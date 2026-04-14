@@ -164,7 +164,7 @@ func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 
 // BuildCommand constructs the Gemini CLI command with standard flags.
 func (a *GeminiAdapter) BuildCommand(prompt, workDir string) *exec.Cmd {
-	cmd := exec.Command("gemini", "-p", prompt, "--yolo", "--output-format", "stream-json")
+	cmd := exec.Command("gemini", "-p", prompt, "--yolo", "--output-format", "stream-json", "--include-directories", layout.Root())
 	cmd.Dir = workDir
 	return cmd
 }
