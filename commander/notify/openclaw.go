@@ -76,46 +76,40 @@ func readOpenClawConfig() openclawConfig {
 	return cfg
 }
 
-// newOpenClawNotifier creates an OpenClawNotifier by reading env vars first,
-// then falling back to ~/.openclaw/openclaw.json for any missing values.
+// newOpenClawNotifier builds config from ~/.openclaw/openclaw.json first, then
+// lets env vars override any values. Errors if token, target, or port is empty.
 func newOpenClawNotifier() (*OpenClawNotifier, error) {
-	token := os.Getenv("OPENCLAW_GATEWAY_TOKEN")
-	port := os.Getenv("OPENCLAW_GATEWAY_PORT")
-	target := os.Getenv("OPENCLAW_NOTIFY_TARGET")
-	channel := os.Getenv("OPENCLAW_NOTIFY_CHANNEL")
+	cfg := readOpenClawConfig()
 
-	// Fill missing values from config file.
-	if token == "" || target == "" || port == "" || channel == "" {
-		cfg := readOpenClawConfig()
-		if token == "" {
-			token = cfg.Token
-		}
-		if port == "" {
-			port = cfg.Port
-		}
-		if target == "" {
-			target = cfg.Target
-		}
-		if channel == "" {
-			channel = cfg.Channel
-		}
+	// Env vars override config file values.
+	if v := os.Getenv("OPENCLAW_GATEWAY_TOKEN"); v != "" {
+		cfg.Token = v
+	}
+	if v := os.Getenv("OPENCLAW_GATEWAY_PORT"); v != "" {
+		cfg.Port = v
+	}
+	if v := os.Getenv("OPENCLAW_NOTIFY_TARGET"); v != "" {
+		cfg.Target = v
+	}
+	if v := os.Getenv("OPENCLAW_NOTIFY_CHANNEL"); v != "" {
+		cfg.Channel = v
 	}
 
-	// Default port if still empty.
-	if port == "" {
-		port = "18789"
+	if cfg.Token == "" {
+		return nil, fmt.Errorf("openclaw: gateway token is required (set in ~/.openclaw/openclaw.json or OPENCLAW_GATEWAY_TOKEN)")
 	}
-
-	// Only error when we cannot possibly send a notification.
-	if token == "" && target == "" {
-		return nil, fmt.Errorf("openclaw: token and target are both empty — set OPENCLAW_GATEWAY_TOKEN / OPENCLAW_NOTIFY_TARGET env vars or provide ~/.openclaw/openclaw.json")
+	if cfg.Target == "" {
+		return nil, fmt.Errorf("openclaw: notify target is required (set in ~/.openclaw/openclaw.json or OPENCLAW_NOTIFY_TARGET)")
+	}
+	if cfg.Port == "" {
+		return nil, fmt.Errorf("openclaw: gateway port is required (set in ~/.openclaw/openclaw.json or OPENCLAW_GATEWAY_PORT)")
 	}
 
 	return &OpenClawNotifier{
-		port:    port,
-		token:   token,
-		target:  target,
-		channel: channel,
+		port:    cfg.Port,
+		token:   cfg.Token,
+		target:  cfg.Target,
+		channel: cfg.Channel,
 	}, nil
 }
 
