@@ -2,7 +2,6 @@ package commander
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -88,41 +87,35 @@ func (c *Commander) resolveMCPDependencies(squad string) []string {
 	return result
 }
 
-// composeMCPConfig builds .mcp.json from individual MCP config files.
+// composeMCPConfig builds a map of MCP server entries from individual config files.
 // runtimeName and notifyBackend are injected as --runtime and --notify flags
 // into the "swat" server args, if present.
-func composeMCPConfig(swatRoot, runtimeName, notifyBackend string, mcps []string) string {
+func composeMCPConfig(swatRoot, runtimeName, notifyBackend string, mcps []string) map[string]interface{} {
 	mcpsDir := filepath.Join(swatRoot, "blueprints", "mcps")
-	servers := make(map[string]string)
+	servers := make(map[string]interface{})
 	for _, name := range mcps {
 		path := filepath.Join(mcpsDir, name+".json")
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
 		}
-		raw := strings.TrimSpace(string(data))
+
+		var parsed interface{}
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			continue
+		}
 
 		// Inject --runtime and --notify into the swat server entry
 		if name == "swat" {
+			raw := strings.TrimSpace(string(data))
 			raw = injectSwatArgs(raw, runtimeName, notifyBackend)
+			if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+				continue
+			}
 		}
-		servers[name] = raw
+		servers[name] = parsed
 	}
-	if len(servers) == 0 {
-		return ""
-	}
-	var sb strings.Builder
-	sb.WriteString("{\n  \"mcpServers\": {\n")
-	i := 0
-	for name, config := range servers {
-		if i > 0 {
-			sb.WriteString(",\n")
-		}
-		sb.WriteString(fmt.Sprintf("    %q: %s", name, config))
-		i++
-	}
-	sb.WriteString("\n  }\n}\n")
-	return sb.String()
+	return servers
 }
 
 // injectSwatArgs adds --runtime and --notify flags to a swat MCP server JSON config.

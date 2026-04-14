@@ -257,11 +257,9 @@ func (c *Commander) provision(rt runtime.RuntimeAdapter, op *Operation, opDir st
 
 	// Compose MCP config from resolved MCP dependencies
 	resolvedMCPs := c.resolveMCPDependencies(op.Squad)
-	if len(resolvedMCPs) > 0 {
-		mcpConfig := composeMCPConfig(c.SwatRoot, c.RuntimeName, c.NotifyBackend, resolvedMCPs)
-		if mcpConfig != "" {
-			rt.ComposeMCPConfig(opDir, mcpConfig)
-		}
+	servers := composeMCPConfig(c.SwatRoot, c.RuntimeName, c.NotifyBackend, resolvedMCPs)
+	if len(servers) > 0 {
+		rt.ComposeMCPConfig(opDir, servers)
 	}
 
 	// Copy skill content (resolve dependencies recursively)

@@ -1,181 +1,174 @@
 package runtime
 
 import (
-"encoding/json"
-"fmt"
-"os"
-"os/exec"
-"path/filepath"
-"strings"
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
-"github.com/gofrs/flock"
+	"github.com/gofrs/flock"
 )
 
 // GeminiAdapter implements RuntimeAdapter for the Google Gemini CLI.
 type GeminiAdapter struct {
-BaseProvisioner
+	BaseProvisioner
 }
 
 // NewGeminiAdapter creates a properly initialized GeminiAdapter.
 func NewGeminiAdapter() *GeminiAdapter {
-return &GeminiAdapter{
-BaseProvisioner: BaseProvisioner{
-dotDir:        ".gemini",
-agentFileName: "GEMINI.md",
-mcpConfigPath: ".gemini/settings.json",
-},
-}
+	return &GeminiAdapter{
+		BaseProvisioner: BaseProvisioner{
+			dotDir:        ".gemini",
+			agentFileName: "GEMINI.md",
+			mcpConfigPath: ".gemini/settings.json",
+		},
+	}
 }
 
 // Name returns "gemini".
 func (a *GeminiAdapter) Name() string { return "gemini" }
 
 // ComposeHooks copies Gemini-specific hooks from each resolved skill.
-// For each skill, it looks for <skillsRoot>/<skill>/hooks/gemini/.
-// Script files (.js) are copied to <opDir>/.gemini/hooks/ preserving subdirectory structure.
-// Each <skill>.json is read for its "hooks" object, and hook entries are appended
-// to the corresponding event arrays in <opDir>/.gemini/settings.json.
+// For each skill, it copies the entire hooks/gemini/ directory to <opDir>/.gemini/hooks/
+// and collects hook JSON configs. After all skills are processed, it reads settings.json
+// once, merges all accumulated hooks, and writes it back once.
 func (a *GeminiAdapter) ComposeHooks(skillsRoot string, resolvedSkills []string, opDir string) error {
-destHooksDir := filepath.Join(opDir, ".gemini", "hooks")
-settingsPath := filepath.Join(opDir, ".gemini", "settings.json")
+	destHooksDir := filepath.Join(opDir, ".gemini", "hooks")
+	settingsPath := filepath.Join(opDir, ".gemini", "settings.json")
 
-for _, skill := range resolvedSkills {
-srcHooks := filepath.Join(skillsRoot, skill, "hooks", "gemini")
-info, err := os.Stat(srcHooks)
-if err != nil || !info.IsDir() {
-continue
-}
+	// Accumulate all hook entries across skills
+	allHooks := make(map[string][]interface{})
 
-// Copy .js script files to .gemini/hooks/ preserving structure
-if err := filepath.Walk(srcHooks, func(path string, fi os.FileInfo, err error) error {
-if err != nil {
-return err
-}
-if fi.IsDir() {
-return nil
-}
-if !strings.HasSuffix(fi.Name(), ".js") {
-return nil
-}
-rel, _ := filepath.Rel(srcHooks, path)
-dest := filepath.Join(destHooksDir, rel)
-if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-return err
-}
-data, readErr := os.ReadFile(path)
-if readErr != nil {
-return readErr
-}
-return os.WriteFile(dest, data, fi.Mode())
-}); err != nil {
-return fmt.Errorf("copy hook scripts for skill %s: %w", skill, err)
-}
+	for _, skill := range resolvedSkills {
+		srcHooks := filepath.Join(skillsRoot, skill, "hooks", "gemini")
+		info, err := os.Stat(srcHooks)
+		if err != nil || !info.IsDir() {
+			continue
+		}
 
-// Read <skill>.json for hook config and merge into settings.json
-hookConfigPath := filepath.Join(srcHooks, skill+".json")
-configData, err := os.ReadFile(hookConfigPath)
-if err != nil {
-continue // no config file for this skill, skip
-}
+		// Copy entire hooks/gemini/ directory to .gemini/hooks/
+		if err := copyDir(srcHooks, destHooksDir); err != nil {
+			return fmt.Errorf("copy hooks for skill %s: %w", skill, err)
+		}
 
-var hookConfig map[string]interface{}
-if err := json.Unmarshal(configData, &hookConfig); err != nil {
-return fmt.Errorf("parse hooks config for skill %s: %w", skill, err)
-}
+		// Collect hook JSON configs from root-level *.json files
+		entries, err := os.ReadDir(srcHooks)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+				continue
+			}
+			configData, err := os.ReadFile(filepath.Join(srcHooks, entry.Name()))
+			if err != nil {
+				continue
+			}
+			var hookConfig map[string]interface{}
+			if err := json.Unmarshal(configData, &hookConfig); err != nil {
+				return fmt.Errorf("parse hooks config %s for skill %s: %w", entry.Name(), skill, err)
+			}
+			incomingHooks, ok := hookConfig["hooks"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			for event, entries := range incomingHooks {
+				incomingArr, ok := entries.([]interface{})
+				if !ok {
+					continue
+				}
+				allHooks[event] = append(allHooks[event], incomingArr...)
+			}
+		}
+	}
 
-incomingHooks, ok := hookConfig["hooks"].(map[string]interface{})
-if !ok {
-continue
-}
+	// Batch write: merge all accumulated hooks into settings.json once
+	if len(allHooks) > 0 {
+		if err := os.MkdirAll(filepath.Dir(settingsPath), 0755); err != nil {
+			return fmt.Errorf("create .gemini dir: %w", err)
+		}
 
-// Read existing settings.json
-if err := os.MkdirAll(filepath.Dir(settingsPath), 0755); err != nil {
-return fmt.Errorf("create .gemini dir: %w", err)
-}
+		settings := make(map[string]interface{})
+		if data, err := os.ReadFile(settingsPath); err == nil {
+			if err := json.Unmarshal(data, &settings); err != nil {
+				return fmt.Errorf("parse settings.json: %w", err)
+			}
+		}
 
-settings := make(map[string]interface{})
-if data, err := os.ReadFile(settingsPath); err == nil {
-if err := json.Unmarshal(data, &settings); err != nil {
-return fmt.Errorf("parse settings.json: %w", err)
-}
-}
+		existingHooks, _ := settings["hooks"].(map[string]interface{})
+		if existingHooks == nil {
+			existingHooks = make(map[string]interface{})
+		}
 
-existingHooks, _ := settings["hooks"].(map[string]interface{})
-if existingHooks == nil {
-existingHooks = make(map[string]interface{})
-}
+		for event, entries := range allHooks {
+			existingArr, _ := existingHooks[event].([]interface{})
+			existingArr = append(existingArr, entries...)
+			existingHooks[event] = existingArr
+		}
 
-// Append hook entries for each event key
-for event, entries := range incomingHooks {
-incomingArr, ok := entries.([]interface{})
-if !ok {
-continue
-}
-existingArr, _ := existingHooks[event].([]interface{})
-existingArr = append(existingArr, incomingArr...)
-existingHooks[event] = existingArr
-}
+		settings["hooks"] = existingHooks
 
-settings["hooks"] = existingHooks
+		out, err := json.MarshalIndent(settings, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal settings.json: %w", err)
+		}
+		out = append(out, '\n')
+		if err := os.WriteFile(settingsPath, out, 0644); err != nil {
+			return fmt.Errorf("write settings.json: %w", err)
+		}
+	}
 
-out, err := json.MarshalIndent(settings, "", "  ")
-if err != nil {
-return fmt.Errorf("marshal settings.json: %w", err)
-}
-out = append(out, '\n')
-if err := os.WriteFile(settingsPath, out, 0644); err != nil {
-return fmt.Errorf("write settings.json: %w", err)
-}
-}
-return nil
+	return nil
 }
 
 // PrepareWorkspace registers the operation directory as a trusted folder in
 // ~/.gemini/trustedFolders.json for all phases.
 func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
-homeDir, err := os.UserHomeDir()
-if err != nil {
-return fmt.Errorf("get home dir: %w", err)
-}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("get home dir: %w", err)
+	}
 
-geminiDir := filepath.Join(homeDir, ".gemini")
-if err := os.MkdirAll(geminiDir, 0755); err != nil {
-return fmt.Errorf("create ~/.gemini: %w", err)
-}
+	geminiDir := filepath.Join(homeDir, ".gemini")
+	if err := os.MkdirAll(geminiDir, 0755); err != nil {
+		return fmt.Errorf("create ~/.gemini: %w", err)
+	}
 
-trustedPath := filepath.Join(geminiDir, "trustedFolders.json")
+	trustedPath := filepath.Join(geminiDir, "trustedFolders.json")
 
-fileLock := flock.New(trustedPath)
-if err := fileLock.Lock(); err != nil {
-return fmt.Errorf("acquire lock: %w", err)
-}
-defer fileLock.Unlock()
+	fileLock := flock.New(trustedPath)
+	if err := fileLock.Lock(); err != nil {
+		return fmt.Errorf("acquire lock: %w", err)
+	}
+	defer fileLock.Unlock()
 
-folders := make(map[string]string)
-data, err := os.ReadFile(trustedPath)
-if err == nil {
-if err := json.Unmarshal(data, &folders); err != nil {
-return fmt.Errorf("parse trustedFolders.json: %w", err)
-}
-}
+	folders := make(map[string]string)
+	data, err := os.ReadFile(trustedPath)
+	if err == nil {
+		if err := json.Unmarshal(data, &folders); err != nil {
+			return fmt.Errorf("parse trustedFolders.json: %w", err)
+		}
+	}
 
-key := strings.ReplaceAll(opDir, "\\", "/")
-folders[key] = "TRUST_FOLDER"
+	key := strings.ReplaceAll(opDir, "\\", "/")
+	folders[key] = "TRUST_FOLDER"
 
-out, err := json.MarshalIndent(folders, "", "  ")
-if err != nil {
-return fmt.Errorf("marshal trustedFolders.json: %w", err)
-}
-if err := os.WriteFile(trustedPath, out, 0644); err != nil {
-return fmt.Errorf("write trustedFolders.json: %w", err)
-}
+	out, err := json.MarshalIndent(folders, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal trustedFolders.json: %w", err)
+	}
+	if err := os.WriteFile(trustedPath, out, 0644); err != nil {
+		return fmt.Errorf("write trustedFolders.json: %w", err)
+	}
 
-return nil
+	return nil
 }
 
 // BuildCommand constructs the Gemini CLI command with standard flags.
 func (a *GeminiAdapter) BuildCommand(prompt, workDir string) *exec.Cmd {
-cmd := exec.Command("gemini", "-p", prompt, "--yolo", "--output-format", "json")
-cmd.Dir = workDir
-return cmd
+	cmd := exec.Command("gemini", "-p", prompt, "--yolo", "--output-format", "json")
+	cmd.Dir = workDir
+	return cmd
 }
