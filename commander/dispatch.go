@@ -246,12 +246,12 @@ func (c *Commander) provision(rt runtime.RuntimeAdapter, op *Operation, opDir st
 	if err != nil {
 		return fmt.Errorf("read protocol: %w", err)
 	}
-	if err := rt.WriteAgentFile(opDir, protocol); err != nil {
+	if err := rt.ComposeAgentFile(opDir, protocol); err != nil {
 		return err
 	}
 
 	// Copy squad blueprint snapshot to .squad/ (read-only reference)
-	if err := rt.CopySquad(squadBP, opDir); err != nil {
+	if err := rt.ComposeSquad(squadBP, opDir); err != nil {
 		return err
 	}
 
@@ -260,14 +260,19 @@ func (c *Commander) provision(rt runtime.RuntimeAdapter, op *Operation, opDir st
 	if len(resolvedMCPs) > 0 {
 		mcpConfig := composeMCPConfig(c.SwatRoot, c.RuntimeName, c.NotifyBackend, resolvedMCPs)
 		if mcpConfig != "" {
-			rt.WriteMCPConfig(opDir, mcpConfig)
+			rt.ComposeMCPConfig(opDir, mcpConfig)
 		}
 	}
 
-	// Copy skills (resolve dependencies recursively)
+	// Copy skill content (resolve dependencies recursively)
 	skillsRoot := filepath.Join(c.SwatRoot, "blueprints", "skills")
 	resolvedSkills := c.resolveDependencies(op.Squad)
-	if err := rt.CopySkills(skillsRoot, resolvedSkills, opDir); err != nil {
+	if err := rt.ComposeSkills(skillsRoot, resolvedSkills, opDir); err != nil {
+		return err
+	}
+
+	// Copy runtime-specific hooks from resolved skills
+	if err := rt.ComposeHooks(skillsRoot, resolvedSkills, opDir); err != nil {
 		return err
 	}
 
