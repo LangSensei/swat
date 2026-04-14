@@ -138,6 +138,17 @@ install_blueprints() {
 
 setup_runtime() {
     mkdir -p "$SWAT_HOME/squads"
+
+    # Create default .env if it doesn't exist
+    local env_file="$SWAT_HOME/.env"
+    if [[ ! -f "$env_file" ]]; then
+        cat > "$env_file" <<'EOF'
+# SWAT runtime configuration
+# Supported runtimes: copilot, claude, gemini
+RUNTIME=copilot
+EOF
+        ok "Created $env_file (default: copilot)"
+    fi
 }
 
 # --- Post-Install ---
@@ -194,9 +205,10 @@ main() {
 
     echo ""
     info "Next steps:"
-    echo "  1. Configure MCP in your agent (.mcp.json):"
-    echo "     {\"mcpServers\":{\"swat\":{\"command\":\"$BIN_DIR/swat\",\"args\":[]}}}"
-    echo "  2. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
+    echo "  1. Add MCP to your agent config (.mcp.json):"
+    echo "     {\"mcpServers\":{\"swat\":{\"command\":\"swat\",\"args\":[]}}}"
+    echo "  2. Change runtime: edit ~/.swat/.env (default: copilot)"
+    echo "  3. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
     echo ""
 }
 
