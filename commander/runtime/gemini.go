@@ -47,7 +47,7 @@ func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 
 	trustedPath := filepath.Join(geminiDir, "trustedFolders.json")
 
-	fileLock := flock.New(trustedPath + ".lock")
+	fileLock := flock.New(trustedPath)
 	if err := fileLock.Lock(); err != nil {
 		return fmt.Errorf("acquire lock: %w", err)
 	}
