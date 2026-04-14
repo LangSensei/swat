@@ -107,9 +107,6 @@ function Install-Blueprints {
     Write-Host "  https://github.com/LangSensei/swat-marketplace"
 }
 
-function Setup-Dirs {
-    New-Item -ItemType Directory -Path (Join-Path $SwatHome "squads") -Force | Out-Null
-}
 
 # --- Post-Install ---
 
@@ -142,7 +139,6 @@ Check-Prereqs
 Fetch-Release
 Install-Binary
 Install-Blueprints
-Setup-Dirs
 Post-Install
 Cleanup
 

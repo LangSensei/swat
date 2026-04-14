@@ -136,10 +136,6 @@ install_blueprints() {
     echo "  https://github.com/LangSensei/swat-marketplace"
 }
 
-setup_dirs() {
-    mkdir -p "$SWAT_HOME/squads"
-}
-
 # --- Post-Install ---
 
 
@@ -185,7 +181,6 @@ main() {
     fetch_release
     install_binary
     install_blueprints
-    setup_dirs
     post_install
     cleanup
 

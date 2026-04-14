@@ -122,7 +122,9 @@ func (c *Commander) processOperation(op *Operation) {
 		log.Printf("[dispatch] %s: classify failed — no squad assigned", op.OperationID)
 		c.failOperation(op, "classify failed: no squad assigned")
 		squads := c.listSquadSummaries()
-		c.Notify(fmt.Sprintf("⚠️ Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s\n\nSuggestions: install a new squad from marketplace (`swat browse`) or rephrase the task.", op.OperationID, op.Brief, squads))
+		if c.Notifier != nil {
+			c.Notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, squads))
+		}
 		return
 	}
 
@@ -130,7 +132,9 @@ func (c *Commander) processOperation(op *Operation) {
 	if !validateSquad(reloaded.Squad) {
 		log.Printf("[dispatch] %s: unknown squad %q", op.OperationID, reloaded.Squad)
 		c.failOperation(op, fmt.Sprintf("classify assigned unknown squad: %s", reloaded.Squad))
-		c.Notify(fmt.Sprintf("⚠️ Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s\n\nTry `swat install %s` or `swat browse` to check availability.", reloaded.Squad, op.OperationID, op.Brief, reloaded.Squad))
+		if c.Notifier != nil {
+			c.Notifier.Notify(fmt.Sprintf("Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s", reloaded.Squad, op.OperationID, op.Brief))
+		}
 		return
 	}
 
@@ -254,7 +258,7 @@ func (c *Commander) provision(rt runtime.RuntimeAdapter, op *Operation, opDir st
 	// Compose MCP config from resolved MCP dependencies
 	resolvedMCPs := c.resolveMCPDependencies(op.Squad)
 	if len(resolvedMCPs) > 0 {
-		mcpConfig := composeMCPConfig(c.SwatRoot, resolvedMCPs)
+		mcpConfig := composeMCPConfig(c.SwatRoot, c.RuntimeName, c.NotifyBackend, resolvedMCPs)
 		if mcpConfig != "" {
 			rt.WriteMCPConfig(opDir, mcpConfig)
 		}

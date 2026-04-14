@@ -152,7 +152,7 @@ func (s *Server) Tools() []ToolDef {
 		},
 		{
 			Name:        "swat_notify",
-			Description: "Send a desktop notification to the user. Use for operation completion alerts.",
+			Description: "Send a notification to the user.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{

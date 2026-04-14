@@ -53,6 +53,7 @@ type Schedule struct {
 type Commander struct {
 	SwatRoot       string
 	RuntimeName    string
+	NotifyBackend  string
 	Notifier       notify.Notifier
 	Iteration      int
 	RecentFailures int
@@ -77,6 +78,9 @@ func New(swatRoot, runtimeName, notifyBackend string) *Commander {
 	}
 	log.Printf("[commander] started, swatRoot=%s", swatRoot)
 
+	// Ensure squads directory exists
+	os.MkdirAll(filepath.Join(swatRoot, "squads"), 0755)
+
 	// Initialize notifier (best-effort; log error but don't fail)
 	var n notify.Notifier
 	if notifier, err := notify.New(notifyBackend); err != nil {
@@ -86,10 +90,11 @@ func New(swatRoot, runtimeName, notifyBackend string) *Commander {
 	}
 
 	return &Commander{
-		SwatRoot:    swatRoot,
-		RuntimeName: runtimeName,
-		Notifier:    n,
-		RetryCount:  make(map[string]int),
+		SwatRoot:      swatRoot,
+		RuntimeName:   runtimeName,
+		NotifyBackend: notifyBackend,
+		Notifier:      n,
+		RetryCount:    make(map[string]int),
 	}
 }
 

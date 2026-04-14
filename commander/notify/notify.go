@@ -2,10 +2,12 @@
 package notify
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os/exec"
 	"runtime"
 	"strings"
+	"unicode/utf16"
 )
 
 // Notifier sends user-facing notifications.
@@ -51,8 +53,21 @@ func (d *DesktopNotifier) Notify(message string) error {
 				`[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SWAT').Show($toast)`,
 			strings.ReplaceAll(message, "'", "''"),
 		)
-		return exec.Command("powershell", "-NoProfile", "-Command", ps).Run()
+		encoded := encodeUTF16LEBase64(ps)
+		return exec.Command("powershell", "-NoProfile", "-EncodedCommand", encoded).Run()
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
+}
+
+// encodeUTF16LEBase64 converts a string to UTF-16LE bytes and then base64-encodes it,
+// suitable for PowerShell's -EncodedCommand parameter.
+func encodeUTF16LEBase64(s string) string {
+	runes := utf16.Encode([]rune(s))
+	b := make([]byte, len(runes)*2)
+	for i, r := range runes {
+		b[i*2] = byte(r)
+		b[i*2+1] = byte(r >> 8)
+	}
+	return base64.StdEncoding.EncodeToString(b)
 }
