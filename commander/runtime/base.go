@@ -37,7 +37,7 @@ func (b *BaseProvisioner) ComposeAgentFile(opDir string, content []byte) error {
 
 // ComposeMCPConfig reads MCP blueprint JSON files, injects runtime/notify args
 // into the swat server entry, and writes the combined config to the operation dir.
-func (b *BaseProvisioner) ComposeMCPConfig(opDir, runtimeName, notify string, mcps []string) error {
+func (b *BaseProvisioner) ComposeMCPConfig(opDir, runtimeName, notifyName string, mcps []string) error {
 	servers := make(map[string]interface{})
 	mcpsDir := layout.BlueprintMCPsDir()
 
@@ -51,7 +51,7 @@ func (b *BaseProvisioner) ComposeMCPConfig(opDir, runtimeName, notify string, mc
 
 		// Inject --runtime and --notify into the swat server entry
 		if name == "swat" {
-			raw = injectSwatArgs(raw, runtimeName, notify)
+			raw = injectSwatArgs(raw, runtimeName, notifyName)
 		}
 
 		var parsed interface{}
@@ -85,7 +85,7 @@ func (b *BaseProvisioner) ComposeMCPConfig(opDir, runtimeName, notify string, mc
 }
 
 // injectSwatArgs adds --runtime and --notify flags to a swat MCP server JSON config.
-func injectSwatArgs(raw, runtimeName, notify string) string {
+func injectSwatArgs(raw, runtimeName, notifyName string) string {
 	var obj map[string]interface{}
 	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
 		return raw
@@ -103,8 +103,8 @@ func injectSwatArgs(raw, runtimeName, notify string) string {
 	if runtimeName != "" {
 		existing = append(existing, "--runtime", runtimeName)
 	}
-	if notify != "" {
-		existing = append(existing, "--notify", notify)
+	if notifyName != "" {
+		existing = append(existing, "--notify", notifyName)
 	}
 	obj["args"] = existing
 	out, err := json.Marshal(obj)

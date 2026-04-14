@@ -13,8 +13,8 @@ import (
 	"github.com/LangSensei/swat/commander/runtime"
 )
 
-// Run copies squad snapshot, skills, hooks, and protocol into the operation directory.
-func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, runtimeName, notify string) error {
+// Provision copies squad snapshot, skills, hooks, and protocol into the operation directory.
+func Provision(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, runtimeName, notifyName string) error {
 	squadBP := layout.BlueprintSquadDir(op.Squad)
 
 	protocol, err := os.ReadFile(filepath.Join(layout.BlueprintFrameworkDir(), "PROTOCOL.md"))
@@ -32,7 +32,7 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, runtimeName,
 	resolvedSkills := deps.ResolveSkillDependencies(op.Squad)
 	resolvedMCPs := deps.ResolveMCPDependencies(op.Squad, resolvedSkills)
 
-	if err := rt.ComposeMCPConfig(opDir, runtimeName, notify, resolvedMCPs); err != nil {
+	if err := rt.ComposeMCPConfig(opDir, runtimeName, notifyName, resolvedMCPs); err != nil {
 		return err
 	}
 
@@ -56,7 +56,7 @@ func LaunchAgent(rt runtime.RuntimeAdapter, op *operation.Operation, opDir strin
 	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
 	cmd := rt.BuildCommand(prompt, opDir)
 
-	logPath := filepath.Join(opDir, "copilot.log")
+	logPath := filepath.Join(opDir, "agent.log")
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		return fmt.Errorf("create log file: %w", err)
@@ -66,7 +66,7 @@ func LaunchAgent(rt runtime.RuntimeAdapter, op *operation.Operation, opDir strin
 
 	if err := cmd.Start(); err != nil {
 		logFile.Close()
-		return fmt.Errorf("start copilot: %w", err)
+		return fmt.Errorf("start agent: %w", err)
 	}
 
 	now := time.Now().UTC()

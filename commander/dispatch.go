@@ -60,7 +60,7 @@ func (c *Commander) processOperation(op *operation.Operation) {
 		return
 	}
 
-	if err := pipeline.Run(rt, reloaded, destDir, c.RuntimeName, c.Notify); err != nil {
+	if err := pipeline.Provision(rt, reloaded, destDir, c.RuntimeName, c.Notify); err != nil {
 		log.Printf("[dispatch] %s: provision failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
 		return

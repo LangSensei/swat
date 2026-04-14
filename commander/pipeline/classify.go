@@ -49,14 +49,14 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 
 	if err := cmd.Start(); err != nil {
 		logFile.Close()
-		return nil, "", fmt.Errorf("start classify copilot: %v", err)
+		return nil, "", fmt.Errorf("start classify agent: %v", err)
 	}
 	if err := cmd.Wait(); err != nil {
 		logFile.Close()
-		log.Printf("[classify] %s: classify copilot exited with error: %v", op.OperationID, err)
+		log.Printf("[classify] %s: classify agent exited with error: %v", op.OperationID, err)
 	} else {
 		logFile.Close()
-		log.Printf("[classify] %s: classify copilot completed successfully", op.OperationID)
+		log.Printf("[classify] %s: classify agent completed successfully", op.OperationID)
 	}
 
 	reloaded, err := operation.Load("_unclassified", op.OperationID)
@@ -66,9 +66,9 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, reloaded.Squad)
 
 	if reloaded.Squad == "" {
-		squads := squads.ListSummaries()
+		summaries := squads.ListSummaries()
 		if notifier != nil {
-			notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, squads))
+			notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, summaries))
 		}
 		return nil, "", fmt.Errorf("classify failed: no squad assigned")
 	}

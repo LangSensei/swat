@@ -36,7 +36,7 @@ type RuntimeAdapter interface {
 	ComposeAgentFile(opDir string, content []byte) error
 
 	// ComposeMCPConfig reads MCP blueprints, injects runtime/notify args, and writes config.
-	ComposeMCPConfig(opDir, runtimeName, notify string, mcps []string) error
+	ComposeMCPConfig(opDir, runtimeName, notifyName string, mcps []string) error
 
 	// ComposeSquad copies the squad blueprint snapshot into opDir/.squad/
 	ComposeSquad(squadBPDir, opDir string) error
