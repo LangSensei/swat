@@ -11,8 +11,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/LangSensei/swat/commander/operation"
+	"github.com/LangSensei/swat/commander/platform"
 )
 
+// SchedulesDir returns the directory for schedule JSON files.
 func (c *Commander) SchedulesDir() string {
 	return filepath.Join(c.SwatRoot, "schedules")
 }
@@ -21,8 +25,8 @@ func (c *Commander) scheduleFile(id string) string {
 	return filepath.Join(c.SchedulesDir(), id+".json")
 }
 
-// CreateSchedule creates a new schedule and persists it
-func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediate bool) (*Schedule, error) {
+// CreateSchedule creates a new schedule and persists it.
+func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediate bool) (*operation.Schedule, error) {
 	if brief == "" {
 		return nil, fmt.Errorf("brief is required")
 	}
@@ -53,7 +57,7 @@ func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediat
 		next = nextCronTime(cronExpr, now, loc)
 	}
 
-	sched := &Schedule{
+	sched := &operation.Schedule{
 		ID:        id,
 		Brief:     brief,
 		Details:   details,
@@ -70,8 +74,8 @@ func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediat
 	return sched, c.saveSchedule(sched)
 }
 
-// ListSchedules returns all schedules sorted by next_run
-func (c *Commander) ListSchedules() ([]*Schedule, error) {
+// ListSchedules returns all schedules sorted by next_run.
+func (c *Commander) ListSchedules() ([]*operation.Schedule, error) {
 	dir := c.SchedulesDir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -81,7 +85,7 @@ func (c *Commander) ListSchedules() ([]*Schedule, error) {
 		return nil, err
 	}
 
-	var schedules []*Schedule
+	var schedules []*operation.Schedule
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
@@ -105,16 +109,16 @@ func (c *Commander) ListSchedules() ([]*Schedule, error) {
 	return schedules, nil
 }
 
-// DeleteSchedule removes a schedule by ID
+// DeleteSchedule removes a schedule by ID.
 func (c *Commander) DeleteSchedule(id string) error {
 	path := c.scheduleFile(id)
-	if !fileExists(path) {
+	if !platform.FileExists(path) {
 		return fmt.Errorf("schedule %q not found", id)
 	}
 	return os.Remove(path)
 }
 
-// CheckDue finds due schedules and dispatches them
+// CheckDue finds due schedules and dispatches them.
 func (c *Commander) CheckDue() {
 	schedules, err := c.ListSchedules()
 	if err != nil || len(schedules) == 0 {
@@ -125,7 +129,7 @@ func (c *Commander) CheckDue() {
 
 	// Build set of schedule IDs with in-flight operations
 	inFlight := make(map[string]bool)
-	ops, _ := c.ListOperations()
+	ops, _ := c.Store.List()
 	for _, op := range ops {
 		if op.Status == "queued" || op.Status == "active" {
 			if strings.HasPrefix(op.Source, "schedule/") {
@@ -154,7 +158,7 @@ func (c *Commander) CheckDue() {
 		}
 		// Update source to schedule/{id}
 		op.Source = "schedule/" + s.ID
-		_ = c.SaveOperation(op)
+		_ = c.Store.Save(op)
 
 		// Update schedule: last_run, next_run
 		loc, _ := time.LoadLocation(s.Timezone)
@@ -167,7 +171,7 @@ func (c *Commander) CheckDue() {
 	}
 }
 
-func (c *Commander) saveSchedule(s *Schedule) error {
+func (c *Commander) saveSchedule(s *operation.Schedule) error {
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
@@ -175,12 +179,12 @@ func (c *Commander) saveSchedule(s *Schedule) error {
 	return os.WriteFile(c.scheduleFile(s.ID), data, 0644)
 }
 
-func (c *Commander) loadSchedule(path string) (*Schedule, error) {
+func (c *Commander) loadSchedule(path string) (*operation.Schedule, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var s Schedule
+	var s operation.Schedule
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, err
 	}
@@ -292,7 +296,7 @@ func contains(vals []int, v int) bool {
 	return false
 }
 
-// nextCronTime finds the next time after `after` that matches the cron spec
+// nextCronTime finds the next time after `after` that matches the cron spec.
 func nextCronTime(expr string, after time.Time, loc *time.Location) *time.Time {
 	spec, err := parseCron(expr)
 	if err != nil {

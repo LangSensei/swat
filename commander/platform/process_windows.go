@@ -1,10 +1,11 @@
 //go:build windows
 
-package commander
+package platform
 
 import "golang.org/x/sys/windows"
 
-func processAlive(pid int) bool {
+// ProcessAlive checks if a process with the given PID is still running.
+func ProcessAlive(pid int) bool {
 	if pid == 0 {
 		return false
 	}

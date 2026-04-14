@@ -1,4 +1,4 @@
-package commander
+package operation
 
 import (
 	"bufio"
@@ -11,8 +11,8 @@ import (
 
 // buildOperationFile reads blueprints/OPERATION.md as a template and replaces
 // placeholders with values from the Operation struct.
-func (c *Commander) buildOperationFile(op *Operation) (string, error) {
-	tmplPath := filepath.Join(c.SwatRoot, "blueprints", "OPERATION.md")
+func (s *Store) buildOperationFile(op *Operation) (string, error) {
+	tmplPath := filepath.Join(s.SwatRoot, "blueprints", "OPERATION.md")
 	tmplData, err := os.ReadFile(tmplPath)
 	if err != nil {
 		return "", fmt.Errorf("read operation template: %w", err)
@@ -83,7 +83,7 @@ func formatOptionalStr(s *string) string {
 	return ""
 }
 
-// parseOperationMD parses an OPERATION.md file into an Operation struct
+// parseOperationMD parses an OPERATION.md file into an Operation struct.
 func parseOperationMD(content string) (*Operation, error) {
 	if !strings.HasPrefix(content, "---") {
 		return nil, fmt.Errorf("missing frontmatter")
@@ -161,7 +161,7 @@ func parseOperationMD(content string) (*Operation, error) {
 	return op, nil
 }
 
-// extractBodySection extracts the content under a ## heading
+// extractBodySection extracts the content under a ## heading.
 func extractBodySection(body, heading string) string {
 	marker := "## " + heading
 	idx := strings.Index(body, marker)

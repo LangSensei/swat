@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/LangSensei/swat/commander"
+	"github.com/LangSensei/swat/commander/operation"
 )
 
 // JSON-RPC types
@@ -195,7 +196,7 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 
 	statusFilter, _ := args["status"].(string)
 	if statusFilter != "" {
-		var filtered []*commander.Operation
+		var filtered []*operation.Operation
 		for _, op := range ops {
 			if op.Status == statusFilter {
 				filtered = append(filtered, op)
@@ -208,7 +209,7 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 	sinceStr, _ := args["since"].(string)
 	if sinceStr != "" {
 		if sinceTime, err := time.Parse(time.RFC3339, sinceStr); err == nil {
-			var filtered []*commander.Operation
+			var filtered []*operation.Operation
 			for _, op := range ops {
 				if op.CompletedAt != nil && op.CompletedAt.After(sinceTime) {
 					filtered = append(filtered, op)
@@ -256,7 +257,7 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 }
 
 // opSortTime returns the most relevant timestamp for sorting (newest event first)
-func opSortTime(op *commander.Operation) time.Time {
+func opSortTime(op *operation.Operation) time.Time {
 	if op.CompletedAt != nil {
 		return *op.CompletedAt
 	}
