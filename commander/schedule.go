@@ -17,13 +17,26 @@ import (
 	"github.com/LangSensei/swat/commander/platform"
 )
 
+// Schedule represents a recurring task definition
+type Schedule struct {
+	ID        string     `json:"id"`
+	Brief     string     `json:"brief"`
+	Details   string     `json:"details,omitempty"`
+	Cron      string     `json:"cron"`
+	Timezone  string     `json:"timezone,omitempty"`
+	Enabled   bool       `json:"enabled"`
+	CreatedAt time.Time  `json:"created_at"`
+	LastRun   *time.Time `json:"last_run,omitempty"`
+	NextRun   *time.Time `json:"next_run,omitempty"`
+}
+
 // scheduleFile returns the path for a schedule JSON file.
 func (c *Commander) scheduleFile(id string) string {
 	return filepath.Join(layout.SchedulesDir(), id+".json")
 }
 
 // CreateSchedule creates a new schedule and persists it.
-func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediate bool) (*operation.Schedule, error) {
+func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediate bool) (*Schedule, error) {
 	if brief == "" {
 		return nil, fmt.Errorf("brief is required")
 	}
@@ -54,7 +67,7 @@ func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediat
 		next = nextCronTime(cronExpr, now, loc)
 	}
 
-	sched := &operation.Schedule{
+	sched := &Schedule{
 		ID:        id,
 		Brief:     brief,
 		Details:   details,
@@ -72,7 +85,7 @@ func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediat
 }
 
 // ListSchedules returns all schedules sorted by next_run.
-func (c *Commander) ListSchedules() ([]*operation.Schedule, error) {
+func (c *Commander) ListSchedules() ([]*Schedule, error) {
 	dir := layout.SchedulesDir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -82,7 +95,7 @@ func (c *Commander) ListSchedules() ([]*operation.Schedule, error) {
 		return nil, err
 	}
 
-	var schedules []*operation.Schedule
+	var schedules []*Schedule
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
@@ -168,7 +181,7 @@ func (c *Commander) CheckDue() {
 	}
 }
 
-func (c *Commander) saveSchedule(s *operation.Schedule) error {
+func (c *Commander) saveSchedule(s *Schedule) error {
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
@@ -176,12 +189,12 @@ func (c *Commander) saveSchedule(s *operation.Schedule) error {
 	return os.WriteFile(c.scheduleFile(s.ID), data, 0644)
 }
 
-func (c *Commander) loadSchedule(path string) (*operation.Schedule, error) {
+func (c *Commander) loadSchedule(path string) (*Schedule, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var s operation.Schedule
+	var s Schedule
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, err
 	}

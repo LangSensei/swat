@@ -13,11 +13,23 @@ import (
 
 	"github.com/LangSensei/swat/commander/deps"
 	"github.com/LangSensei/swat/commander/layout"
-	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
 )
 
 const marketplaceAPI = "https://api.github.com/repos/LangSensei/swat-marketplace"
+
+// BrowseResult represents a squad available in the marketplace
+type BrowseResult struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Installed   bool   `json:"installed"`
+}
+
+// SkillPrereq represents a skill that has prerequisites needing user setup
+type SkillPrereq struct {
+	Skill string `json:"skill"`
+	Path  string `json:"path"`
+}
 
 // ListSquads returns all installed squad blueprints.
 func (c *Commander) ListSquads() ([]map[string]string, error) {
@@ -56,13 +68,13 @@ func (c *Commander) countSquads() int {
 }
 
 // Browse lists all squads available in the marketplace.
-func (c *Commander) Browse() ([]operation.BrowseResult, error) {
+func (c *Commander) Browse() ([]BrowseResult, error) {
 	entries, err := ghListDir("squads")
 	if err != nil {
 		return nil, fmt.Errorf("list marketplace squads: %w", err)
 	}
 
-	var results []operation.BrowseResult
+	var results []BrowseResult
 	for _, e := range entries {
 		name := e.Name
 		if e.Type != "dir" || name == "_framework" {
@@ -74,7 +86,7 @@ func (c *Commander) Browse() ([]operation.BrowseResult, error) {
 			desc = deps.ExtractFrontmatterField(string(data), "description")
 		}
 		installed := platform.DirExists(layout.BlueprintSquadDir(name))
-		results = append(results, operation.BrowseResult{
+		results = append(results, BrowseResult{
 			Name:        name,
 			Description: desc,
 			Installed:   installed,
@@ -84,9 +96,9 @@ func (c *Commander) Browse() ([]operation.BrowseResult, error) {
 }
 
 // collectPrereqs scans installed skills for prereq declarations in frontmatter.
-func (c *Commander) collectPrereqs(skills []string) []operation.SkillPrereq {
+func (c *Commander) collectPrereqs(skills []string) []SkillPrereq {
 	bpDir := layout.BlueprintDir()
-	var prereqs []operation.SkillPrereq
+	var prereqs []SkillPrereq
 	for _, skill := range skills {
 		skillMD := filepath.Join(bpDir, "skills", skill, "SKILL.md")
 		data, err := os.ReadFile(skillMD)
@@ -96,7 +108,7 @@ func (c *Commander) collectPrereqs(skills []string) []operation.SkillPrereq {
 		val := deps.ParseFrontmatterValue(string(data), "prereq")
 		if val != "" {
 			absPath := filepath.Join(bpDir, "skills", skill, val)
-			prereqs = append(prereqs, operation.SkillPrereq{Skill: skill, Path: absPath})
+			prereqs = append(prereqs, SkillPrereq{Skill: skill, Path: absPath})
 		}
 	}
 	return prereqs
@@ -104,7 +116,7 @@ func (c *Commander) collectPrereqs(skills []string) []operation.SkillPrereq {
 
 // Install fetches a squad from the marketplace and installs its dependencies.
 // Returns a list of skill prereqs that need user attention (may be empty).
-func (c *Commander) Install(squad string) ([]operation.SkillPrereq, error) {
+func (c *Commander) Install(squad string) ([]SkillPrereq, error) {
 	bpDir := layout.BlueprintDir()
 	squadDir := filepath.Join(bpDir, "squads", squad)
 
