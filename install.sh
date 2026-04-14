@@ -136,19 +136,8 @@ install_blueprints() {
     echo "  https://github.com/LangSensei/swat-marketplace"
 }
 
-setup_runtime() {
+setup_dirs() {
     mkdir -p "$SWAT_HOME/squads"
-
-    # Create default .env if it doesn't exist (existing files are never modified)
-    local env_file="$SWAT_HOME/.env"
-    if [[ ! -f "$env_file" ]]; then
-        cat > "$env_file" <<'EOF'
-# SWAT configuration
-# Runtime: copilot | gemini
-RUNTIME=copilot
-EOF
-        ok "Created $env_file"
-    fi
 }
 
 # --- Post-Install ---
@@ -196,7 +185,7 @@ main() {
     fetch_release
     install_binary
     install_blueprints
-    setup_runtime
+    setup_dirs
     post_install
     cleanup
 
@@ -207,7 +196,7 @@ main() {
     info "Next steps:"
     echo "  1. Add SWAT MCP server to your agent config:"
     echo "     {\"mcpServers\":{\"swat\":{\"command\":\"swat\",\"args\":[]}}}"
-    echo "  2. Change runtime: edit ~/.swat/.env (default: copilot)"
+    echo "  2. Switch runtime: swat --runtime <name> (default: copilot)"
     echo "  3. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
     echo ""
 }

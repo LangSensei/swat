@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/LangSensei/swat/commander/notify"
 )
 
 // Operation represents a task parsed from OPERATION.md frontmatter
@@ -50,13 +52,15 @@ type Schedule struct {
 // Commander is the core orchestrator
 type Commander struct {
 	SwatRoot       string
+	RuntimeName    string
+	Notifier       notify.Notifier
 	Iteration      int
 	RecentFailures int
 	RetryCount     map[string]int
 }
 
 // New creates a new Commander instance
-func New(swatRoot string) *Commander {
+func New(swatRoot, runtimeName, notifyBackend string) *Commander {
 	if len(swatRoot) >= 2 && swatRoot[:2] == "~/" {
 		home, _ := os.UserHomeDir()
 		swatRoot = filepath.Join(home, swatRoot[2:])
@@ -73,9 +77,19 @@ func New(swatRoot string) *Commander {
 	}
 	log.Printf("[commander] started, swatRoot=%s", swatRoot)
 
+	// Initialize notifier (best-effort; log error but don't fail)
+	var n notify.Notifier
+	if notifier, err := notify.New(notifyBackend); err != nil {
+		log.Printf("[commander] notify init: %v (notifications disabled)", err)
+	} else {
+		n = notifier
+	}
+
 	return &Commander{
-		SwatRoot:   swatRoot,
-		RetryCount: make(map[string]int),
+		SwatRoot:    swatRoot,
+		RuntimeName: runtimeName,
+		Notifier:    n,
+		RetryCount:  make(map[string]int),
 	}
 }
 

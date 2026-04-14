@@ -65,6 +65,19 @@ func (c *Commander) handleActive(op *Operation) {
 		c.RecentFailures++
 	}
 	c.SaveOperation(op)
+
+	// Send desktop notification on state transition
+	if c.Notifier != nil {
+		var msg string
+		if op.Status == "completed" {
+			msg = "Operation " + op.OperationID + " completed"
+		} else {
+			msg = "Operation " + op.OperationID + " failed"
+		}
+		if err := c.Notifier.Notify(msg); err != nil {
+			log.Printf("[scan] notify error: %v", err)
+		}
+	}
 }
 
 // ShouldReview determines if LLM review is needed

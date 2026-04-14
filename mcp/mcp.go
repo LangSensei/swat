@@ -2,17 +2,22 @@ package mcp
 
 import (
 	"github.com/LangSensei/swat/commander"
+	"github.com/LangSensei/swat/commander/notify"
 )
 
 // Server wraps the Commander as an MCP server
 type Server struct {
 	Commander *commander.Commander
+	Notifier  notify.Notifier
 	Version   string
 }
 
 // NewServer creates a new MCP server
 func NewServer(cmdr *commander.Commander) *Server {
-	return &Server{Commander: cmdr}
+	return &Server{
+		Commander: cmdr,
+		Notifier:  cmdr.Notifier,
+	}
 }
 
 // ToolDef describes an MCP tool
@@ -143,6 +148,17 @@ func (s *Server) Tools() []ToolDef {
 					"squad": map[string]interface{}{"type": "string", "description": "Squad name to update"},
 				},
 				"required": []string{"squad"},
+			},
+		},
+		{
+			Name:        "swat_notify",
+			Description: "Send a desktop notification to the user. Use for operation completion alerts.",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"message": map[string]interface{}{"type": "string", "description": "Notification message to display"},
+				},
+				"required": []string{"message"},
 			},
 		},
 	}
