@@ -197,7 +197,6 @@ main() {
     echo "  1. Configure MCP in your agent (.mcp.json):"
     echo "     {\"mcpServers\":{\"swat\":{\"command\":\"$BIN_DIR/swat\",\"args\":[]}}}"
     echo "  2. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
-    echo "  3. Install a squad: swat install <squad-name>"
     echo ""
 }
 
