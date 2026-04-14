@@ -294,19 +294,19 @@ func (s *Server) handleCancel(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleSquads(args map[string]interface{}) toolResult {
-	squads, err := squads.List()
+	installed, err := squads.List()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list squads failed: %v", err)}},
 			IsError: true,
 		}
 	}
-	if len(squads) == 0 {
+	if len(installed) == 0 {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: "no squads installed"}},
 		}
 	}
-	data, _ := json.MarshalIndent(squads, "", "  ")
+	data, _ := json.MarshalIndent(installed, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}
