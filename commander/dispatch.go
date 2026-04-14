@@ -8,7 +8,6 @@ import (
 
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/pipeline"
-	"github.com/LangSensei/swat/commander/pipeline/provision"
 	"github.com/LangSensei/swat/commander/runtime"
 )
 
@@ -61,13 +60,13 @@ func (c *Commander) processOperation(op *operation.Operation) {
 		return
 	}
 
-	if err := provision.Run(rt, reloaded, destDir, c.RuntimeName, c.NotifyBackend); err != nil {
+	if err := pipeline.Run(rt, reloaded, destDir, c.RuntimeName, c.NotifyBackend); err != nil {
 		log.Printf("[dispatch] %s: provision failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
 		return
 	}
 
-	if err := provision.LaunchAgent(rt, reloaded, destDir); err != nil {
+	if err := pipeline.LaunchAgent(rt, reloaded, destDir); err != nil {
 		log.Printf("[dispatch] %s: launch failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("launch: %v", err))
 		return
