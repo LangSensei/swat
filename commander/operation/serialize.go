@@ -1,20 +1,19 @@
 package operation
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/LangSensei/swat/commander/deps"
 	"github.com/LangSensei/swat/commander/layout"
 )
 
 // buildOperationFile reads blueprints/OPERATION.md as a template and replaces
 // placeholders with values from the Operation struct.
 func buildOperationFile(op *Operation) (string, error) {
-	tmplPath := filepath.Join(layout.BlueprintDir(), "OPERATION.md")
+	tmplPath := layout.OperationTemplatePath()
 	tmplData, err := os.ReadFile(tmplPath)
 	if err != nil {
 		return "", fmt.Errorf("read operation template: %w", err)
@@ -87,31 +86,13 @@ func formatOptionalStr(s *string) string {
 
 // parseOperationMD parses an OPERATION.md file into an Operation struct.
 func parseOperationMD(content string) (*Operation, error) {
-	if !strings.HasPrefix(content, "---") {
-		return nil, fmt.Errorf("missing frontmatter")
+	fm, body, err := deps.ParseFrontmatter(content)
+	if err != nil {
+		return nil, err
 	}
-	end := strings.Index(content[3:], "\n---")
-	if end < 0 {
-		return nil, fmt.Errorf("unterminated frontmatter")
-	}
-	fm := content[4 : end+3]
-	body := content[end+7:] // after closing ---
 
 	op := &Operation{}
-	scanner := bufio.NewScanner(strings.NewReader(fm))
-	for scanner.Scan() {
-		line := scanner.Text()
-		// Skip YAML comments
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		idx := strings.Index(line, ":")
-		if idx < 0 {
-			continue
-		}
-		key := strings.TrimSpace(line[:idx])
-		val := strings.TrimSpace(line[idx+1:])
+	for key, val := range fm {
 		switch key {
 		case "operation_id":
 			op.OperationID = val

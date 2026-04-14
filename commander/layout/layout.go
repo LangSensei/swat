@@ -35,6 +35,9 @@ func BlueprintSkillsDir() string { return filepath.Join(BlueprintDir(), "skills"
 // BlueprintMCPsDir returns the blueprints/mcps directory.
 func BlueprintMCPsDir() string { return filepath.Join(BlueprintDir(), "mcps") }
 
+// OperationTemplatePath returns the path to the OPERATION.md template.
+func OperationTemplatePath() string { return filepath.Join(BlueprintDir(), "OPERATION.md") }
+
 // --- Runtime (squads + operations) ---
 
 // SquadsDir returns the runtime squads base directory.

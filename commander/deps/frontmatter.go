@@ -9,15 +9,24 @@ import (
 // parseFrontmatter extracts YAML frontmatter key-value pairs from markdown.
 // Returns nil if no valid frontmatter block is found.
 func parseFrontmatter(md string) map[string]string {
+	fields, _, _ := ParseFrontmatter(md)
+	return fields
+}
+
+// ParseFrontmatter extracts YAML frontmatter fields and the body after the closing ---.
+// Returns (nil, "", error) if no valid frontmatter block is found.
+func ParseFrontmatter(md string) (map[string]string, string, error) {
 	if !strings.HasPrefix(md, "---") {
-		return nil
+		return nil, "", fmt.Errorf("missing frontmatter")
 	}
 	end := strings.Index(md[3:], "\n---")
 	if end < 0 {
-		return nil
+		return nil, "", fmt.Errorf("unterminated frontmatter")
 	}
 	fm := md[4 : end+3]
-	result := make(map[string]string)
+	body := md[end+7:]
+
+	fields := make(map[string]string)
 	for _, line := range strings.Split(fm, "\n") {
 		trimmed := strings.TrimSpace(line)
 		idx := strings.Index(trimmed, ":")
@@ -27,10 +36,10 @@ func parseFrontmatter(md string) map[string]string {
 		key := strings.TrimSpace(trimmed[:idx])
 		val := strings.TrimSpace(trimmed[idx+1:])
 		if key != "" {
-			result[key] = val
+			fields[key] = val
 		}
 	}
-	return result
+	return fields, body, nil
 }
 
 // ParseDependencyList extracts a dependency list from frontmatter, e.g. "skills: [a, b]".
