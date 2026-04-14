@@ -56,14 +56,12 @@ type RuntimeAdapter interface {
 	BuildCommand(prompt, workDir string) *exec.Cmd
 }
 
-// New creates a RuntimeAdapter by name. Reads the RUNTIME setting from
-// ~/.swat/swat.env if name is empty, defaulting to "copilot" if the file
-// is missing or does not contain a RUNTIME line. This allows dynamic runtime
-// switching between operations without restarting Commander.
-func New(name string) (RuntimeAdapter, error) {
-	if name == "" {
-		name = readRuntimeFromEnvFile()
-	}
+// New creates a RuntimeAdapter. Reads the RUNTIME setting from
+// ~/.swat/.env, defaulting to "copilot" if the file is missing or does not
+// contain a RUNTIME line. This allows dynamic runtime switching between
+// operations without restarting Commander.
+func New() (RuntimeAdapter, error) {
+	name := readRuntimeFromEnvFile()
 	if name == "" {
 		name = "copilot"
 	}
@@ -77,14 +75,14 @@ func New(name string) (RuntimeAdapter, error) {
 	}
 }
 
-// readRuntimeFromEnvFile reads the RUNTIME value from ~/.swat/swat.env.
+// readRuntimeFromEnvFile reads the RUNTIME value from ~/.swat/.env.
 // Returns empty string if the file doesn't exist or has no RUNTIME line.
 func readRuntimeFromEnvFile() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	f, err := os.Open(filepath.Join(home, ".swat", "swat.env"))
+	f, err := os.Open(filepath.Join(home, ".swat", ".env"))
 	if err != nil {
 		return ""
 	}

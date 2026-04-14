@@ -72,7 +72,7 @@ func (c *Commander) processOperation(op *Operation) {
 	)
 
 	// Create runtime adapter once for this operation
-	rt, err := runtime.New("")
+	rt, err := runtime.New()
 	if err != nil {
 		c.failOperation(op, fmt.Sprintf("init runtime: %v", err))
 		return
