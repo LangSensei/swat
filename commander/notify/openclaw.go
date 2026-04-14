@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -19,27 +20,102 @@ type OpenClawNotifier struct {
 	channel string
 }
 
-// newOpenClawNotifier validates required env vars and returns an OpenClawNotifier.
-func newOpenClawNotifier() (*OpenClawNotifier, error) {
-	token := os.Getenv("OPENCLAW_GATEWAY_TOKEN")
-	if token == "" {
-		return nil, fmt.Errorf("openclaw: OPENCLAW_GATEWAY_TOKEN is required")
-	}
-	target := os.Getenv("OPENCLAW_NOTIFY_TARGET")
-	if target == "" {
-		return nil, fmt.Errorf("openclaw: OPENCLAW_NOTIFY_TARGET is required")
+// openclawConfig holds values extracted from ~/.openclaw/openclaw.json.
+type openclawConfig struct {
+	Token   string
+	Port    string
+	Target  string
+	Channel string
+}
+
+// readOpenClawConfig reads ~/.openclaw/openclaw.json and extracts gateway and
+// channel configuration. Returns a zero-value config (no error) if the file
+// does not exist or cannot be parsed.
+func readOpenClawConfig() openclawConfig {
+	var cfg openclawConfig
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return cfg
 	}
 
+	data, err := os.ReadFile(filepath.Join(home, ".openclaw", "openclaw.json"))
+	if err != nil {
+		return cfg
+	}
+
+	var raw struct {
+		Gateway struct {
+			Port json.Number `json:"port"`
+			Auth struct {
+				Token string `json:"token"`
+			} `json:"auth"`
+		} `json:"gateway"`
+		Channels map[string]struct {
+			AllowFrom []string `json:"allowFrom"`
+		} `json:"channels"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return cfg
+	}
+
+	cfg.Token = raw.Gateway.Auth.Token
+	if p := raw.Gateway.Port.String(); p != "" {
+		cfg.Port = p
+	}
+
+	// Use the first channel that has an allowFrom entry as target and channel name.
+	for name, ch := range raw.Channels {
+		if len(ch.AllowFrom) > 0 {
+			cfg.Target = ch.AllowFrom[0]
+			cfg.Channel = name
+			break
+		}
+	}
+
+	return cfg
+}
+
+// newOpenClawNotifier creates an OpenClawNotifier by reading env vars first,
+// then falling back to ~/.openclaw/openclaw.json for any missing values.
+func newOpenClawNotifier() (*OpenClawNotifier, error) {
+	token := os.Getenv("OPENCLAW_GATEWAY_TOKEN")
 	port := os.Getenv("OPENCLAW_GATEWAY_PORT")
+	target := os.Getenv("OPENCLAW_NOTIFY_TARGET")
+	channel := os.Getenv("OPENCLAW_NOTIFY_CHANNEL")
+
+	// Fill missing values from config file.
+	if token == "" || target == "" || port == "" || channel == "" {
+		cfg := readOpenClawConfig()
+		if token == "" {
+			token = cfg.Token
+		}
+		if port == "" {
+			port = cfg.Port
+		}
+		if target == "" {
+			target = cfg.Target
+		}
+		if channel == "" {
+			channel = cfg.Channel
+		}
+	}
+
+	// Default port if still empty.
 	if port == "" {
 		port = "18789"
+	}
+
+	// Only error when we cannot possibly send a notification.
+	if token == "" && target == "" {
+		return nil, fmt.Errorf("openclaw: token and target are both empty — set OPENCLAW_GATEWAY_TOKEN / OPENCLAW_NOTIFY_TARGET env vars or provide ~/.openclaw/openclaw.json")
 	}
 
 	return &OpenClawNotifier{
 		port:    port,
 		token:   token,
 		target:  target,
-		channel: os.Getenv("OPENCLAW_NOTIFY_CHANNEL"),
+		channel: channel,
 	}, nil
 }
 
