@@ -32,9 +32,9 @@ func (b *BaseProvisioner) ComposeAgentFile(opDir string, content []byte) error {
 	return nil
 }
 
-// ComposeMCPConfig merges the incoming server entries into the existing MCP
-// config file at MCPConfigPath(). If the file doesn't exist, it is created.
-// Multiple calls append servers rather than overwrite.
+// ComposeMCPConfig writes the server entries into the MCP config file at
+// MCPConfigPath(). If the file already exists, other top-level fields (e.g.
+// hooks) are preserved, but mcpServers is replaced entirely.
 func (b *BaseProvisioner) ComposeMCPConfig(opDir string, servers map[string]interface{}) error {
 	dest := filepath.Join(opDir, b.mcpConfigPath)
 
@@ -51,15 +51,8 @@ func (b *BaseProvisioner) ComposeMCPConfig(opDir string, servers map[string]inte
 		}
 	}
 
-	// Merge mcpServers
-	existingServers, _ := existing["mcpServers"].(map[string]interface{})
-	if existingServers == nil {
-		existingServers = make(map[string]interface{})
-	}
-	for k, v := range servers {
-		existingServers[k] = v
-	}
-	existing["mcpServers"] = existingServers
+	// Set mcpServers (written once, no merge needed)
+	existing["mcpServers"] = servers
 
 	out, err := json.MarshalIndent(existing, "", "  ")
 	if err != nil {

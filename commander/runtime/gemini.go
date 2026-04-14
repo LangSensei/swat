@@ -97,18 +97,8 @@ func (a *GeminiAdapter) ComposeHooks(skillsRoot string, resolvedSkills []string,
 			}
 		}
 
-		existingHooks, _ := settings["hooks"].(map[string]interface{})
-		if existingHooks == nil {
-			existingHooks = make(map[string]interface{})
-		}
-
-		for event, entries := range allHooks {
-			existingArr, _ := existingHooks[event].([]interface{})
-			existingArr = append(existingArr, entries...)
-			existingHooks[event] = existingArr
-		}
-
-		settings["hooks"] = existingHooks
+		// Set hooks (composed once per provisioning, no merge needed)
+		settings["hooks"] = allHooks
 
 		out, err := json.MarshalIndent(settings, "", "  ")
 		if err != nil {
