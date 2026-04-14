@@ -15,7 +15,7 @@ var version = "dev"
 func main() {
 	// Parse CLI flags
 	runtimeName := "copilot"
-	notifyBackend := "desktop"
+	notify := "desktop"
 	mcpOnly := false
 
 	for i := 1; i < len(os.Args); i++ {
@@ -33,12 +33,12 @@ func main() {
 		case "--notify":
 			i++
 			if i < len(os.Args) {
-				notifyBackend = os.Args[i]
+				notify = os.Args[i]
 			}
 		}
 	}
 
-	cmdr := commander.New(runtimeName, notifyBackend)
+	cmdr := commander.New(runtimeName, notify)
 	if !mcpOnly {
 		go cmdr.BackgroundLoop(60 * time.Second)
 		log.Println("SWAT Commander starting...")

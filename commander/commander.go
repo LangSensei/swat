@@ -15,7 +15,7 @@ import (
 // Commander is the core orchestrator
 type Commander struct {
 	RuntimeName   string
-	NotifyBackend string
+	Notify string
 	Notifier      notify.Notifier
 
 	iteration      int
@@ -24,10 +24,10 @@ type Commander struct {
 }
 
 // New creates a new Commander instance
-func New(runtimeName, notifyBackend string) *Commander {
+func New(runtimeName, notifyName string) *Commander {
 	layout.EnsureDirs()
 
-	n, err := notify.New(notifyBackend)
+	n, err := notify.New(notifyName)
 	if err != nil {
 		log.Printf("[commander] notify init error (falling back to desktop): %v", err)
 		n = &notify.DesktopNotifier{}
@@ -35,7 +35,7 @@ func New(runtimeName, notifyBackend string) *Commander {
 
 	return &Commander{
 		RuntimeName:   runtimeName,
-		NotifyBackend: notifyBackend,
+		Notify: notifyName,
 		Notifier:      n,
 		RetryCount:    make(map[string]int),
 	}
