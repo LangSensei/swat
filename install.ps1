@@ -110,15 +110,15 @@ function Install-Blueprints {
 function Setup-Runtime {
     New-Item -ItemType Directory -Path (Join-Path $SwatHome "squads") -Force | Out-Null
 
-    # Create default .env if it doesn't exist
+    # Create default .env if it doesn't exist (existing files are never modified)
     $envFile = Join-Path $SwatHome ".env"
     if (-not (Test-Path $envFile)) {
         @"
-# SWAT runtime configuration
-# Supported runtimes: copilot, claude, gemini
+# SWAT configuration
+# Runtime: copilot | gemini
 RUNTIME=copilot
 "@ | Set-Content $envFile -Encoding UTF8
-        Ok "Created $envFile (default: copilot)"
+        Ok "Created $envFile"
     }
 }
 
@@ -161,7 +161,7 @@ Write-Host ""
 Ok "SWAT installed successfully! 🚀"
 Write-Host ""
 Info "Next steps:"
-Write-Host "  1. Add MCP to your agent config (.mcp.json):"
+Write-Host "  1. Add SWAT MCP server to your agent config:"
 Write-Host "     {`"mcpServers`":{`"swat`":{`"command`":`"swat`",`"args`":[]}}}"
 Write-Host "  2. Change runtime: edit ~/.swat/.env (default: copilot)"
 Write-Host "  3. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
