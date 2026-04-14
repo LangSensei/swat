@@ -3,9 +3,9 @@ package operation
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/LangSensei/swat/commander/deps"
 	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/platform"
 )
@@ -93,21 +93,12 @@ func Save(op *Operation) error {
 		patches["summary"] = op.Summary
 	}
 
-	return patchFrontmatterFields(mdPath, patches)
+	return deps.PatchFrontmatterFields(mdPath, patches)
 }
 
 // Load reads and parses OPERATION.md for a classified operation.
 func Load(squad, opID string) (*Operation, error) {
 	data, err := os.ReadFile(layout.OperationMDPath(squad, opID))
-	if err != nil {
-		return nil, err
-	}
-	return parseOperationMD(string(data))
-}
-
-// LoadUnclassified reads and parses OPERATION.md from unclassified.
-func LoadUnclassified(opID string) (*Operation, error) {
-	data, err := os.ReadFile(layout.UnclassifiedOperationMDPath(opID))
 	if err != nil {
 		return nil, err
 	}
@@ -160,44 +151,4 @@ func Find(opID string) (*Operation, error) {
 		}
 	}
 	return nil, fmt.Errorf("operation %s not found", opID)
-}
-
-// patchFrontmatterFields updates specific key-value pairs in YAML frontmatter.
-func patchFrontmatterFields(path string, patches map[string]string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	content := string(data)
-	if !strings.HasPrefix(content, "---") {
-		return fmt.Errorf("missing frontmatter")
-	}
-
-	end := strings.Index(content[3:], "\n---")
-	if end < 0 {
-		return fmt.Errorf("unterminated frontmatter")
-	}
-
-	fm := content[4 : end+3]
-	body := content[end+7:]
-
-	lines := strings.Split(fm, "\n")
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "#") || trimmed == "" {
-			continue
-		}
-		idx := strings.Index(line, ":")
-		if idx < 0 {
-			continue
-		}
-		key := strings.TrimSpace(line[:idx])
-		if val, ok := patches[key]; ok {
-			lines[i] = key + ": " + val
-		}
-	}
-
-	result := "---\n" + strings.Join(lines, "\n") + "\n---" + body
-	return os.WriteFile(path, []byte(result), 0644)
 }

@@ -59,7 +59,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 		log.Printf("[classify] %s: classify copilot completed successfully", op.OperationID)
 	}
 
-	reloaded, err := operation.LoadUnclassified(op.OperationID)
+	reloaded, err := operation.Load("_unclassified", op.OperationID)
 	if err != nil {
 		return nil, "", fmt.Errorf("reload after classify: %v", err)
 	}
