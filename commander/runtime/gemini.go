@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gofrs/flock"
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/platform"
 )
 
@@ -145,6 +146,10 @@ func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 
 	key := strings.ReplaceAll(opDir, "\\", "/")
 	folders[key] = "TRUST_FOLDER"
+
+	// Trust the entire .swat directory so Gemini CLI can read blueprints
+	swatRoot := strings.ReplaceAll(layout.Root(), "\\", "/")
+	folders[swatRoot] = "TRUST_FOLDER"
 
 	out, err := json.MarshalIndent(folders, "", "  ")
 	if err != nil {
