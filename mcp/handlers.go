@@ -406,17 +406,7 @@ func (s *Server) handleUninstall(args map[string]interface{}) toolResult {
 
 	purge, _ := args["purge"].(bool)
 
-	// Check for active operations
-	var activeIDs []string
-	if ops, err := s.Commander.ListOperations(); err == nil {
-		for _, op := range ops {
-			if op.Squad == squad && op.Status == "active" {
-				activeIDs = append(activeIDs, op.OperationID)
-			}
-		}
-	}
-
-	if err := squads.Uninstall(squad, purge, activeIDs); err != nil {
+	if err := squads.Uninstall(squad, purge); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("uninstall failed: %v", err)}},
 			IsError: true,

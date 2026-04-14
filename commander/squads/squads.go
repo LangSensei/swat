@@ -233,15 +233,11 @@ func Update(squad string) error {
 
 // Uninstall removes a squad blueprint and cleans up orphaned dependencies.
 // activeOps is a list of operation IDs currently active for this squad (caller checks).
-func Uninstall(squad string, purge bool, activeOpIDs []string) error {
+func Uninstall(squad string, purge bool) error {
 	squadBP := layout.BlueprintSquadDir(squad)
 
 	if !platform.FileExists(filepath.Join(squadBP, "MANIFEST.md")) {
 		return fmt.Errorf("squad %q is not installed", squad)
-	}
-
-	if len(activeOpIDs) > 0 {
-		return fmt.Errorf("squad %q has active operation %s — cancel it first", squad, activeOpIDs[0])
 	}
 
 	if err := os.RemoveAll(squadBP); err != nil {
