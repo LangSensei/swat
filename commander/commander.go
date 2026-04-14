@@ -4,12 +4,13 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
+	"path/filepath"
 	"time"
 
 	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
-	"github.com/LangSensei/swat/commander/pipeline"
+	"github.com/LangSensei/swat/commander/platform"
 )
 
 // Commander is the core orchestrator
@@ -70,7 +71,38 @@ func (c *Commander) scan() {
 	}
 	for _, op := range ops {
 		if op.Status == "active" {
-			pipeline.HandleActive(op, c.Notifier)
+			c.handleActive(op)
+		}
+	}
+}
+
+func (c *Commander) handleActive(op *operation.Operation) {
+	if op.PID > 0 && platform.ProcessAlive(op.PID) {
+		return
+	}
+
+	now := time.Now().UTC()
+	opDir := layout.OperationDir(op.Squad, op.OperationID)
+	reportExists := platform.FileExists(filepath.Join(opDir, "report.html"))
+	opCompleted := platform.FileContains(layout.OperationMDPath(op.Squad, op.OperationID), "status: completed")
+
+	if reportExists && opCompleted {
+		op.Status = "completed"
+		op.CompletedAt = &now
+		op.PID = 0
+	} else {
+		reason := "process_exited_without_completion"
+		op.Status = "failed"
+		op.FailedAt = &now
+		op.FailureReason = &reason
+		op.PID = 0
+	}
+	operation.Save(op)
+
+	if c.Notifier != nil && op.Status != "completed" {
+		msg := "Operation " + op.OperationID + " failed"
+		if err := c.Notifier.Notify(msg); err != nil {
+			log.Printf("[scan] notify error: %v", err)
 		}
 	}
 }
