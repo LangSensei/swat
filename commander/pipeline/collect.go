@@ -5,21 +5,22 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
 )
 
 // HandleActive checks an active operation and updates its status if the process has exited.
-func HandleActive(op *operation.Operation, paths operation.PathResolver, blueprintsRoot string, notifier notify.Notifier) {
+func HandleActive(op *operation.Operation, notifier notify.Notifier) {
 	if op.PID > 0 && platform.ProcessAlive(op.PID) {
 		return
 	}
 
 	now := time.Now().UTC()
-	opDir := paths.OperationDir(op.Squad, op.OperationID)
+	opDir := layout.OperationDir(op.Squad, op.OperationID)
 	reportExists := platform.FileExists(filepath.Join(opDir, "report.html"))
-	opCompleted := platform.FileContains(paths.OperationMDPath(op.Squad, op.OperationID), "status: completed")
+	opCompleted := platform.FileContains(layout.OperationMDPath(op.Squad, op.OperationID), "status: completed")
 
 	if reportExists && opCompleted {
 		op.Status = "completed"
@@ -32,7 +33,7 @@ func HandleActive(op *operation.Operation, paths operation.PathResolver, bluepri
 		op.FailureReason = &reason
 		op.PID = 0
 	}
-	operation.Save(paths, blueprintsRoot, op)
+	operation.Save(op)
 
 	if notifier != nil && op.Status != "completed" {
 		msg := "Operation " + op.OperationID + " failed"

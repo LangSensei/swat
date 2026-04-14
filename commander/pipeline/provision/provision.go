@@ -8,17 +8,16 @@ import (
 	"time"
 
 	"github.com/LangSensei/swat/commander/deps"
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/runtime"
 )
 
 // Run copies squad snapshot, skills, hooks, and protocol into the operation directory.
 func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, runtimeName, notifyBackend string) error {
-	bpDir := filepath.Join(swatRoot, "blueprints")
-	squadBP := filepath.Join(bpDir, "squads", op.Squad)
-	frameworkDir := filepath.Join(bpDir, "squads", "_framework")
+	squadBP := layout.SquadBlueprintDir(op.Squad)
 
-	protocol, err := os.ReadFile(filepath.Join(frameworkDir, "PROTOCOL.md"))
+	protocol, err := os.ReadFile(filepath.Join(layout.FrameworkDir(), "PROTOCOL.md"))
 	if err != nil {
 		return fmt.Errorf("read protocol: %w", err)
 	}
@@ -38,13 +37,12 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, ru
 		}
 	}
 
-	skillsRoot := filepath.Join(swatRoot, "blueprints", "skills")
 	resolvedSkills := deps.ResolveDependencies(swatRoot, op.Squad)
-	if err := rt.ComposeSkills(skillsRoot, resolvedSkills, opDir); err != nil {
+	if err := rt.ComposeSkills(layout.SkillsDir(), resolvedSkills, opDir); err != nil {
 		return err
 	}
 
-	if err := rt.ComposeHooks(skillsRoot, resolvedSkills, opDir); err != nil {
+	if err := rt.ComposeHooks(layout.SkillsDir(), resolvedSkills, opDir); err != nil {
 		return err
 	}
 
@@ -56,7 +54,7 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, ru
 }
 
 // LaunchAgent starts a runtime agent process for the operation.
-func LaunchAgent(rt runtime.RuntimeAdapter, op *operation.Operation, opDir string, paths operation.PathResolver, blueprintsRoot string) error {
+func LaunchAgent(rt runtime.RuntimeAdapter, op *operation.Operation, opDir string) error {
 	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
 	cmd := rt.BuildCommand(prompt, opDir)
 
@@ -78,7 +76,7 @@ func LaunchAgent(rt runtime.RuntimeAdapter, op *operation.Operation, opDir strin
 	op.PID = cmd.Process.Pid
 	op.DispatchedAt = &now
 
-	if err := operation.Save(paths, blueprintsRoot, op); err != nil {
+	if err := operation.Save(op); err != nil {
 		cmd.Process.Kill()
 		logFile.Close()
 		return err

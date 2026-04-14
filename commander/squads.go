@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/LangSensei/swat/commander/deps"
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
 )
@@ -20,7 +21,7 @@ const marketplaceAPI = "https://api.github.com/repos/LangSensei/swat-marketplace
 
 // ListSquads returns all installed squad blueprints.
 func (c *Commander) ListSquads() ([]map[string]string, error) {
-	bpDir := filepath.Join(c.Layout.Root, "blueprints")
+	bpDir := filepath.Join(layout.Root(), "blueprints")
 	entries, err := os.ReadDir(filepath.Join(bpDir, "squads"))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -72,7 +73,7 @@ func (c *Commander) Browse() ([]operation.BrowseResult, error) {
 		if err == nil {
 			desc = deps.ExtractFrontmatterField(string(data), "description")
 		}
-		installed := platform.DirExists(filepath.Join(c.Layout.Root, "blueprints", "squads", name))
+		installed := platform.DirExists(filepath.Join(layout.Root(), "blueprints", "squads", name))
 		results = append(results, operation.BrowseResult{
 			Name:        name,
 			Description: desc,
@@ -84,7 +85,7 @@ func (c *Commander) Browse() ([]operation.BrowseResult, error) {
 
 // collectPrereqs scans installed skills for prereq declarations in frontmatter.
 func (c *Commander) collectPrereqs(skills []string) []operation.SkillPrereq {
-	bpDir := filepath.Join(c.Layout.Root, "blueprints")
+	bpDir := filepath.Join(layout.Root(), "blueprints")
 	var prereqs []operation.SkillPrereq
 	for _, skill := range skills {
 		skillMD := filepath.Join(bpDir, "skills", skill, "SKILL.md")
@@ -104,7 +105,7 @@ func (c *Commander) collectPrereqs(skills []string) []operation.SkillPrereq {
 // Install fetches a squad from the marketplace and installs its dependencies.
 // Returns a list of skill prereqs that need user attention (may be empty).
 func (c *Commander) Install(squad string) ([]operation.SkillPrereq, error) {
-	bpDir := filepath.Join(c.Layout.Root, "blueprints")
+	bpDir := filepath.Join(layout.Root(), "blueprints")
 	squadDir := filepath.Join(bpDir, "squads", squad)
 
 	if platform.FileExists(filepath.Join(squadDir, "MANIFEST.md")) {
@@ -120,7 +121,7 @@ func (c *Commander) Install(squad string) ([]operation.SkillPrereq, error) {
 		return nil, fmt.Errorf("squad %q not found in marketplace", squad)
 	}
 
-	allSkills := deps.ResolveDependencies(c.Layout.Root, squad)
+	allSkills := deps.ResolveDependencies(layout.Root(), squad)
 
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(bpDir, "skills", skill)
@@ -134,7 +135,7 @@ func (c *Commander) Install(squad string) ([]operation.SkillPrereq, error) {
 
 	// Resolve MCPs after skills are downloaded so transitive deps
 	// declared in skill SKILL.md files are visible on disk.
-	allMCPs := deps.ResolveMCPDependencies(c.Layout.Root, squad)
+	allMCPs := deps.ResolveMCPDependencies(layout.Root(), squad)
 
 	for _, mcp := range allMCPs {
 		destMCP := filepath.Join(bpDir, "mcps", mcp+".json")
@@ -157,7 +158,7 @@ func (c *Commander) Install(squad string) ([]operation.SkillPrereq, error) {
 
 // Update re-downloads a squad and its dependencies from the marketplace.
 func (c *Commander) Update(squad string) error {
-	bpDir := filepath.Join(c.Layout.Root, "blueprints")
+	bpDir := filepath.Join(layout.Root(), "blueprints")
 	squadDir := filepath.Join(bpDir, "squads", squad)
 
 	if !platform.FileExists(filepath.Join(squadDir, "MANIFEST.md")) {
@@ -171,7 +172,7 @@ func (c *Commander) Update(squad string) error {
 		return fmt.Errorf("download squad %q: %w", squad, err)
 	}
 
-	allSkills := deps.ResolveDependencies(c.Layout.Root, squad)
+	allSkills := deps.ResolveDependencies(layout.Root(), squad)
 
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(bpDir, "skills", skill)
@@ -182,7 +183,7 @@ func (c *Commander) Update(squad string) error {
 	}
 
 	// Resolve MCPs after skills are downloaded so transitive deps are visible
-	allMCPs := deps.ResolveMCPDependencies(c.Layout.Root, squad)
+	allMCPs := deps.ResolveMCPDependencies(layout.Root(), squad)
 
 	for _, mcp := range allMCPs {
 		destMCP := filepath.Join(bpDir, "mcps", mcp+".json")
@@ -201,7 +202,7 @@ func (c *Commander) Update(squad string) error {
 
 // Uninstall removes a squad blueprint and cleans up orphaned dependencies.
 func (c *Commander) Uninstall(squad string, purge bool) error {
-	bpDir := filepath.Join(c.Layout.Root, "blueprints")
+	bpDir := filepath.Join(layout.Root(), "blueprints")
 	squadBP := filepath.Join(bpDir, "squads", squad)
 
 	if !platform.FileExists(filepath.Join(squadBP, "MANIFEST.md")) {
@@ -222,7 +223,7 @@ func (c *Commander) Uninstall(squad string, purge bool) error {
 	}
 
 	if purge {
-		runtimeDir := c.Layout.SquadDir(squad)
+		runtimeDir := layout.SquadDir(squad)
 		if platform.FileExists(runtimeDir) {
 			os.RemoveAll(runtimeDir)
 		}
@@ -234,7 +235,7 @@ func (c *Commander) Uninstall(squad string, purge bool) error {
 
 // cleanOrphans removes skills and MCPs not referenced by any installed squad.
 func (c *Commander) cleanOrphans() {
-	bpDir := filepath.Join(c.Layout.Root, "blueprints")
+	bpDir := filepath.Join(layout.Root(), "blueprints")
 
 	neededSkills := make(map[string]bool)
 	neededMCPs := make(map[string]bool)
@@ -246,10 +247,10 @@ func (c *Commander) cleanOrphans() {
 
 	for _, sq := range squads {
 		name := sq["name"]
-		for _, skill := range deps.ResolveDependencies(c.Layout.Root, name) {
+		for _, skill := range deps.ResolveDependencies(layout.Root(), name) {
 			neededSkills[skill] = true
 		}
-		for _, mcp := range deps.ResolveMCPDependencies(c.Layout.Root, name) {
+		for _, mcp := range deps.ResolveMCPDependencies(layout.Root(), name) {
 			neededMCPs[mcp] = true
 		}
 	}

@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/LangSensei/swat/commander/layout"
 )
 
 // buildOperationFile reads blueprints/OPERATION.md as a template and replaces
 // placeholders with values from the Operation struct.
-func buildOperationFile(blueprintsRoot string, op *Operation) (string, error) {
-	tmplPath := filepath.Join(blueprintsRoot, "OPERATION.md")
+func buildOperationFile(op *Operation) (string, error) {
+	tmplPath := filepath.Join(layout.BlueprintsDir(), "OPERATION.md")
 	tmplData, err := os.ReadFile(tmplPath)
 	if err != nil {
 		return "", fmt.Errorf("read operation template: %w", err)

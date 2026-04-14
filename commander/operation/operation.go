@@ -6,49 +6,41 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/platform"
 )
 
-// PathResolver provides directory/path lookups. Implemented by commander.Layout.
-type PathResolver interface {
-	OperationDir(squad, opID string) string
-	OperationMDPath(squad, opID string) string
-	UnclassifiedOperationDir(opID string) string
-	UnclassifiedOperationMDPath(opID string) string
-	SquadDir(squad string) string
-}
-
 // Create writes a new OPERATION.md from template.
-func Create(paths PathResolver, blueprintsRoot string, op *Operation) error {
+func Create(op *Operation) error {
 	var dir, mdPath string
 	if op.Squad == "" {
-		dir = paths.UnclassifiedOperationDir(op.OperationID)
-		mdPath = paths.UnclassifiedOperationMDPath(op.OperationID)
+		dir = layout.UnclassifiedOperationDir(op.OperationID)
+		mdPath = layout.UnclassifiedOperationMDPath(op.OperationID)
 	} else {
-		dir = paths.OperationDir(op.Squad, op.OperationID)
-		mdPath = paths.OperationMDPath(op.Squad, op.OperationID)
+		dir = layout.OperationDir(op.Squad, op.OperationID)
+		mdPath = layout.OperationMDPath(op.Squad, op.OperationID)
 	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create operation dir: %w", err)
 	}
-	md, err := buildOperationFile(blueprintsRoot, op)
+	md, err := buildOperationFile(op)
 	if err != nil {
 		return fmt.Errorf("build operation file: %w", err)
 	}
 	return os.WriteFile(mdPath, []byte(md), 0644)
 }
 
-// Save updates OPERATION.md using field-level patching (preserves comments and body).
-func Save(paths PathResolver, blueprintsRoot string, op *Operation) error {
+// Save updates OPERATION.md using field-level patching.
+func Save(op *Operation) error {
 	var mdPath string
 	if op.Squad == "" {
-		mdPath = paths.UnclassifiedOperationMDPath(op.OperationID)
+		mdPath = layout.UnclassifiedOperationMDPath(op.OperationID)
 	} else {
-		mdPath = paths.OperationMDPath(op.Squad, op.OperationID)
+		mdPath = layout.OperationMDPath(op.Squad, op.OperationID)
 	}
 
 	if !platform.FileExists(mdPath) {
-		return Create(paths, blueprintsRoot, op)
+		return Create(op)
 	}
 
 	patches := map[string]string{
@@ -81,9 +73,8 @@ func Save(paths PathResolver, blueprintsRoot string, op *Operation) error {
 }
 
 // Load reads and parses OPERATION.md for a classified operation.
-func Load(paths PathResolver, squad, opID string) (*Operation, error) {
-	path := paths.OperationMDPath(squad, opID)
-	data, err := os.ReadFile(path)
+func Load(squad, opID string) (*Operation, error) {
+	data, err := os.ReadFile(layout.OperationMDPath(squad, opID))
 	if err != nil {
 		return nil, err
 	}
@@ -91,9 +82,8 @@ func Load(paths PathResolver, squad, opID string) (*Operation, error) {
 }
 
 // LoadUnclassified reads and parses OPERATION.md from unclassified.
-func LoadUnclassified(paths PathResolver, opID string) (*Operation, error) {
-	path := paths.UnclassifiedOperationMDPath(opID)
-	data, err := os.ReadFile(path)
+func LoadUnclassified(opID string) (*Operation, error) {
+	data, err := os.ReadFile(layout.UnclassifiedOperationMDPath(opID))
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +91,10 @@ func LoadUnclassified(paths PathResolver, opID string) (*Operation, error) {
 }
 
 // List returns all operations across all squads (including _unclassified).
-func List(paths PathResolver, squadsDir string) ([]*Operation, error) {
+func List() ([]*Operation, error) {
 	var ops []*Operation
 
-	squadEntries, err := os.ReadDir(squadsDir)
+	squadEntries, err := os.ReadDir(layout.SquadsDir())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return ops, nil
@@ -115,9 +105,7 @@ func List(paths PathResolver, squadsDir string) ([]*Operation, error) {
 		if !se.IsDir() {
 			continue
 		}
-		opsDir := paths.OperationDir(se.Name(), "")
-		// OperationDir returns squads/{squad}/operations/{opID}, we need the parent
-		opsDir = paths.SquadDir(se.Name()) + "/operations"
+		opsDir := layout.SquadDir(se.Name()) + "/operations"
 		opEntries, err := os.ReadDir(opsDir)
 		if err != nil {
 			continue
@@ -126,7 +114,7 @@ func List(paths PathResolver, squadsDir string) ([]*Operation, error) {
 			if !oe.IsDir() {
 				continue
 			}
-			op, err := Load(paths, se.Name(), oe.Name())
+			op, err := Load(se.Name(), oe.Name())
 			if err != nil {
 				continue
 			}
@@ -137,8 +125,8 @@ func List(paths PathResolver, squadsDir string) ([]*Operation, error) {
 }
 
 // Find locates an operation by ID across all squads.
-func Find(paths PathResolver, squadsDir, opID string) (*Operation, error) {
-	ops, err := List(paths, squadsDir)
+func Find(opID string) (*Operation, error) {
+	ops, err := List()
 	if err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/LangSensei/swat/commander/deps"
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
@@ -15,8 +16,8 @@ import (
 )
 
 // Classify runs the LLM-based classify+enrich step on an unclassified operation.
-func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, paths operation.PathResolver, blueprintsRoot, swatRoot string, notifier notify.Notifier) (*operation.Operation, string, error) {
-	unclassifiedDir := paths.UnclassifiedOperationDir(op.OperationID)
+func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notify.Notifier) (*operation.Operation, string, error) {
+	unclassifiedDir := layout.UnclassifiedOperationDir(op.OperationID)
 
 	if err := rt.PrepareWorkspace(unclassifiedDir, runtime.PhaseClassify); err != nil {
 		return nil, "", fmt.Errorf("prepare workspace (classify): %v", err)
@@ -33,8 +34,8 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, paths operatio
 			"3. Write enrichment to the `### Context` section (under ## Assignment). Keep the ## Assignment text intact. Write historical context, related operation findings, and key metrics into ### Context, replacing the `[CLASSIFY: ...]` placeholder. "+
 			"If no squad is a good fit for the task, leave the squad field empty. "+
 			"Do NOT modify any other frontmatter fields besides 'squad' and 'references'.",
-		filepath.Join(swatRoot, "blueprints", "squads"),
-		filepath.Join(swatRoot, "squads"),
+		filepath.Join(layout.BlueprintsDir(), "squads"),
+		layout.SquadsDir(),
 	)
 
 	cmd := rt.BuildCommand(prompt, unclassifiedDir)
@@ -59,21 +60,21 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, paths operatio
 		log.Printf("[classify] %s: classify copilot completed successfully", op.OperationID)
 	}
 
-	reloaded, err := operation.LoadUnclassified(paths, op.OperationID)
+	reloaded, err := operation.LoadUnclassified(op.OperationID)
 	if err != nil {
 		return nil, "", fmt.Errorf("reload after classify: %v", err)
 	}
 	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, reloaded.Squad)
 
 	if reloaded.Squad == "" {
-		squads := listSquadSummaries(swatRoot)
+		squads := listSquadSummaries()
 		if notifier != nil {
 			notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, squads))
 		}
 		return nil, "", fmt.Errorf("classify failed: no squad assigned")
 	}
 
-	manifestPath := filepath.Join(swatRoot, "blueprints", "squads", reloaded.Squad, "MANIFEST.md")
+	manifestPath := filepath.Join(layout.SquadBlueprintDir(reloaded.Squad), "MANIFEST.md")
 	if !platform.FileExists(manifestPath) {
 		if notifier != nil {
 			notifier.Notify(fmt.Sprintf("Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s", reloaded.Squad, op.OperationID, op.Brief))
@@ -81,7 +82,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, paths operatio
 		return nil, "", fmt.Errorf("classify assigned unknown squad: %s", reloaded.Squad)
 	}
 
-	destDir := paths.OperationDir(reloaded.Squad, op.OperationID)
+	destDir := layout.OperationDir(reloaded.Squad, op.OperationID)
 	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
 		return nil, "", fmt.Errorf("create squad dir: %v", err)
 	}
@@ -92,8 +93,8 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, paths operatio
 	return reloaded, destDir, nil
 }
 
-func listSquadSummaries(swatRoot string) string {
-	entries, err := os.ReadDir(filepath.Join(swatRoot, "blueprints", "squads"))
+func listSquadSummaries() string {
+	entries, err := os.ReadDir(filepath.Join(layout.BlueprintsDir(), "squads"))
 	if err != nil {
 		return "(none installed)"
 	}
@@ -104,7 +105,7 @@ func listSquadSummaries(swatRoot string) string {
 		}
 		name := entry.Name()
 		desc := "(no description)"
-		manifestPath := filepath.Join(swatRoot, "blueprints", "squads", name, "MANIFEST.md")
+		manifestPath := filepath.Join(layout.SquadBlueprintDir(name), "MANIFEST.md")
 		if data, err := os.ReadFile(manifestPath); err == nil {
 			if d := deps.ExtractFrontmatterField(string(data), "description"); d != "" {
 				desc = d

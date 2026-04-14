@@ -4,10 +4,9 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"time"
 
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/pipeline"
@@ -15,12 +14,10 @@ import (
 
 // Commander is the core orchestrator
 type Commander struct {
-	Layout        *Layout
 	RuntimeName   string
 	NotifyBackend string
 	Notifier      notify.Notifier
 
-	// Internal state for background loop
 	iteration      int
 	recentFailures int
 	RetryCount     map[string]int
@@ -28,28 +25,9 @@ type Commander struct {
 
 // New creates a new Commander instance
 func New(swatRoot, runtimeName, notifyBackend string) *Commander {
-	if len(swatRoot) >= 2 && swatRoot[:2] == "~/" {
-		if home, err := os.UserHomeDir(); err == nil {
-			swatRoot = filepath.Join(home, swatRoot[2:])
-		}
-	}
+	layout.Init(swatRoot)
+	layout.EnsureDirs()
 
-	layout := &Layout{Root: swatRoot}
-
-	// Ensure directory structure exists
-	for _, dir := range []string{
-		swatRoot,
-		layout.BlueprintsDir(),
-		filepath.Join(layout.BlueprintsDir(), "squads"),
-		layout.SkillsDir(),
-		layout.MCPsDir(),
-		filepath.Join(swatRoot, "squads"),
-		filepath.Join(swatRoot, "squads", "_unclassified", "operations"),
-	} {
-		os.MkdirAll(dir, 0755)
-	}
-
-	// Initialize notifier
 	n, err := notify.New(notifyBackend)
 	if err != nil {
 		log.Printf("[commander] notify init error (falling back to desktop): %v", err)
@@ -57,7 +35,6 @@ func New(swatRoot, runtimeName, notifyBackend string) *Commander {
 	}
 
 	return &Commander{
-		Layout:        layout,
 		RuntimeName:   runtimeName,
 		NotifyBackend: notifyBackend,
 		Notifier:      n,
@@ -75,7 +52,7 @@ func GenerateOpID() string {
 
 // ListOperations returns all operations across all squads.
 func (c *Commander) ListOperations() ([]*operation.Operation, error) {
-	return operation.List(c.Layout, c.Layout.SquadsDir())
+	return operation.List()
 }
 
 // BackgroundLoop runs the Commander's periodic scan.
@@ -93,7 +70,6 @@ func (c *Commander) BackgroundLoop(interval time.Duration) {
 	}
 }
 
-// scan checks all operations for state transitions.
 func (c *Commander) scan() {
 	ops, err := c.ListOperations()
 	if err != nil {
@@ -103,7 +79,7 @@ func (c *Commander) scan() {
 	c.recentFailures = 0
 	for _, op := range ops {
 		if op.Status == "active" {
-			pipeline.HandleActive(op, c.Layout, c.Layout.BlueprintsDir(), c.Notifier)
+			pipeline.HandleActive(op, c.Notifier)
 			if op.DispatchedAt != nil && time.Since(*op.DispatchedAt) > 30*time.Minute {
 				c.recentFailures++
 			}
@@ -111,7 +87,6 @@ func (c *Commander) scan() {
 	}
 }
 
-// shouldReview determines if LLM review is needed.
 func (c *Commander) shouldReview() bool {
 	if c.iteration%10 == 0 {
 		return true

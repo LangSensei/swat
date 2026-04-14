@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/pipeline"
 	"github.com/LangSensei/swat/commander/pipeline/provision"
@@ -23,7 +24,7 @@ func (c *Commander) Dispatch(brief, details string) (*operation.Operation, error
 		Source:      "user",
 		CreatedAt:   now,
 	}
-	if err := operation.Create(c.Layout, c.Layout.BlueprintsDir(), op); err != nil {
+	if err := operation.Create(op); err != nil {
 		return nil, err
 	}
 
@@ -36,7 +37,7 @@ func (c *Commander) Dispatch(brief, details string) (*operation.Operation, error
 				now := time.Now().UTC()
 				op.FailedAt = &now
 				op.FailureReason = &reason
-				operation.Save(c.Layout, c.Layout.BlueprintsDir(), op)
+				operation.Save(op)
 			}
 		}()
 		c.processOperation(op)
@@ -54,20 +55,20 @@ func (c *Commander) processOperation(op *operation.Operation) {
 		return
 	}
 
-	reloaded, destDir, err := pipeline.Classify(rt, op, c.Layout, c.Layout.BlueprintsDir(), c.Layout.Root, c.Notifier)
+	reloaded, destDir, err := pipeline.Classify(rt, op, c.Notifier)
 	if err != nil {
 		log.Printf("[dispatch] %s: classify failed: %v", op.OperationID, err)
 		c.failOperation(op, err.Error())
 		return
 	}
 
-	if err := provision.Run(rt, reloaded, destDir, c.Layout.Root, c.RuntimeName, c.NotifyBackend); err != nil {
+	if err := provision.Run(rt, reloaded, destDir, layout.Root(), c.RuntimeName, c.NotifyBackend); err != nil {
 		log.Printf("[dispatch] %s: provision failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
 		return
 	}
 
-	if err := provision.LaunchAgent(rt, reloaded, destDir, c.Layout, c.Layout.BlueprintsDir()); err != nil {
+	if err := provision.LaunchAgent(rt, reloaded, destDir); err != nil {
 		log.Printf("[dispatch] %s: launch failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("launch: %v", err))
 		return
@@ -80,12 +81,12 @@ func (c *Commander) failOperation(op *operation.Operation, reason string) {
 	op.Status = "failed"
 	op.FailedAt = &now
 	op.FailureReason = &reason
-	operation.Save(c.Layout, c.Layout.BlueprintsDir(), op)
+	operation.Save(op)
 }
 
 // Cancel marks an operation as failed and kills the process if active.
 func (c *Commander) Cancel(opID string) error {
-	op, err := operation.Find(c.Layout, c.Layout.SquadsDir(), opID)
+	op, err := operation.Find(opID)
 	if err != nil {
 		return err
 	}
@@ -101,5 +102,5 @@ func (c *Commander) Cancel(opID string) error {
 	op.Status = "failed"
 	op.FailedAt = &now
 	op.FailureReason = &reason
-	return operation.Save(c.Layout, c.Layout.BlueprintsDir(), op)
+	return operation.Save(op)
 }

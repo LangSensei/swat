@@ -12,13 +12,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
 )
 
 // scheduleFile returns the path for a schedule JSON file.
 func (c *Commander) scheduleFile(id string) string {
-	return filepath.Join(c.Layout.SchedulesDir(), id+".json")
+	return filepath.Join(layout.SchedulesDir(), id+".json")
 }
 
 // CreateSchedule creates a new schedule and persists it.
@@ -64,7 +65,7 @@ func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediat
 		NextRun:   next,
 	}
 
-	if err := os.MkdirAll(c.Layout.SchedulesDir(), 0755); err != nil {
+	if err := os.MkdirAll(layout.SchedulesDir(), 0755); err != nil {
 		return nil, err
 	}
 	return sched, c.saveSchedule(sched)
@@ -72,7 +73,7 @@ func (c *Commander) CreateSchedule(brief, details, cronExpr, tz string, immediat
 
 // ListSchedules returns all schedules sorted by next_run.
 func (c *Commander) ListSchedules() ([]*operation.Schedule, error) {
-	dir := c.Layout.SchedulesDir()
+	dir := layout.SchedulesDir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -154,7 +155,7 @@ func (c *Commander) CheckDue() {
 		}
 		// Update source to schedule/{id}
 		op.Source = "schedule/" + s.ID
-		_ = operation.Save(c.Layout, c.Layout.BlueprintsDir(), op)
+		_ = operation.Save(op)
 
 		// Update schedule: last_run, next_run
 		loc, _ := time.LoadLocation(s.Timezone)
