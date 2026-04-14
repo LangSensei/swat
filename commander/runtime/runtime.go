@@ -35,9 +35,8 @@ type RuntimeAdapter interface {
 	// ComposeAgentFile writes the agent instruction file into the operation directory
 	ComposeAgentFile(opDir string, content []byte) error
 
-	// ComposeMCPConfig writes server entries into the MCP config file.
-	// Replaces mcpServers entirely while preserving other top-level fields (e.g. hooks).
-	ComposeMCPConfig(opDir string, servers map[string]interface{}) error
+	// ComposeMCPConfig reads MCP blueprints, injects runtime/notify args, and writes config.
+	ComposeMCPConfig(opDir, runtimeName, notifyBackend string, mcps []string) error
 
 	// ComposeSquad copies the squad blueprint snapshot into opDir/.squad/
 	ComposeSquad(squadBPDir, opDir string) error

@@ -30,11 +30,8 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, runtimeName,
 	}
 
 	resolvedMCPs := deps.ResolveMCPDependencies(op.Squad)
-	servers := ComposeMCPConfig(runtimeName, notifyBackend, resolvedMCPs)
-	if len(servers) > 0 {
-		if err := rt.ComposeMCPConfig(opDir, servers); err != nil {
-			return err
-		}
+	if err := rt.ComposeMCPConfig(opDir, runtimeName, notifyBackend, resolvedMCPs); err != nil {
+		return err
 	}
 
 	resolvedSkills := deps.ResolveDependencies(op.Squad)
