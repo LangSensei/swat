@@ -32,11 +32,16 @@ func (a *CopilotAdapter) AgentFileName() string { return a.BaseProvisioner.agent
 // MCPConfigPath returns ".mcp.json".
 func (a *CopilotAdapter) MCPConfigPath() string { return a.BaseProvisioner.mcpConfigPath }
 
-// InstallHooks runs git init so that Copilot CLI can discover .github/hooks/.
-func (a *CopilotAdapter) InstallHooks(opDir string) error {
+// PrepareWorkspace runs workspace initialization for the given phase.
+// During PhaseOperate it runs git init so that Copilot CLI can discover .github/hooks/.
+// During PhaseClassify no initialization is needed.
+func (a *CopilotAdapter) PrepareWorkspace(opDir string, phase Phase) error {
+	if phase != PhaseOperate {
+		return nil
+	}
 	cmd := exec.Command("git", "init")
 	cmd.Dir = opDir
-	return cmd.Run() // best-effort; hooks won't fire without it but operation can proceed
+	return cmd.Run()
 }
 
 // BuildCommand constructs the Copilot CLI command with standard flags.

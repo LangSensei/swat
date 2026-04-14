@@ -78,6 +78,12 @@ func (c *Commander) processOperation(op *Operation) {
 		return
 	}
 
+	// Prepare workspace for classify phase (lightweight, no git init)
+	if err := rt.PrepareWorkspace(unclassifiedDir, runtime.PhaseClassify); err != nil {
+		c.failOperation(op, fmt.Sprintf("prepare workspace (classify): %v", err))
+		return
+	}
+
 	cmd := rt.BuildCommand(prompt, unclassifiedDir)
 
 	logPath := filepath.Join(unclassifiedDir, "classify.log")
@@ -262,8 +268,8 @@ func (c *Commander) provision(rt runtime.RuntimeAdapter, op *Operation, opDir st
 		return err
 	}
 
-	// Runtime-specific hook installation (e.g. git init for Copilot hook discovery)
-	rt.InstallHooks(opDir)
+	// Prepare workspace for operate phase (full setup, e.g. git init for hook discovery)
+	rt.PrepareWorkspace(opDir, runtime.PhaseOperate)
 
 	return nil
 }

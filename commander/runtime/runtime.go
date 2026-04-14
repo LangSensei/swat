@@ -11,6 +11,16 @@ import (
 	"strings"
 )
 
+// Phase indicates which stage of the dispatch pipeline is calling PrepareWorkspace.
+type Phase string
+
+const (
+	// PhaseClassify is the classify+enrich stage (lightweight, no git init needed).
+	PhaseClassify Phase = "classify"
+	// PhaseOperate is the provision+launch stage (full workspace setup).
+	PhaseOperate Phase = "operate"
+)
+
 // RuntimeAdapter abstracts the agent runtime (Copilot CLI, Claude Code, etc.)
 type RuntimeAdapter interface {
 	// Name returns the runtime identifier (e.g. "copilot")
@@ -37,8 +47,10 @@ type RuntimeAdapter interface {
 	// CopySkills copies resolved skills into the runtime's dotDir (skills + hooks)
 	CopySkills(skillsRoot string, resolvedSkills []string, opDir string) error
 
-	// InstallHooks runs any runtime-specific initialization (e.g. git init for hook discovery)
-	InstallHooks(opDir string) error
+	// PrepareWorkspace runs runtime-specific workspace initialization for the given phase.
+	// During PhaseClassify this is a no-op for most runtimes; during PhaseOperate it may
+	// run git init or other setup needed for hook discovery.
+	PrepareWorkspace(opDir string, phase Phase) error
 
 	// BuildCommand constructs the exec.Cmd for launching the runtime with the given prompt
 	BuildCommand(prompt, workDir string) *exec.Cmd
