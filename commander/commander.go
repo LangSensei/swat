@@ -16,7 +16,7 @@ import (
 // Commander is the core orchestrator
 type Commander struct {
 	RuntimeName string
-	Notify      string
+	NotifyName  string
 	Notifier    notify.Notifier
 }
 
@@ -32,7 +32,7 @@ func New(runtimeName, notifyName string) *Commander {
 
 	return &Commander{
 		RuntimeName: runtimeName,
-		Notify:      notifyName,
+		NotifyName:  notifyName,
 		Notifier:    n,
 	}
 }
