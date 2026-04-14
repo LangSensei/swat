@@ -259,7 +259,9 @@ func (c *Commander) provision(rt runtime.RuntimeAdapter, op *Operation, opDir st
 	resolvedMCPs := c.resolveMCPDependencies(op.Squad)
 	servers := composeMCPConfig(c.SwatRoot, c.RuntimeName, c.NotifyBackend, resolvedMCPs)
 	if len(servers) > 0 {
-		rt.ComposeMCPConfig(opDir, servers)
+		if err := rt.ComposeMCPConfig(opDir, servers); err != nil {
+			return err
+		}
 	}
 
 	// Copy skill content (resolve dependencies recursively)
