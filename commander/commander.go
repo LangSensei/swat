@@ -18,7 +18,6 @@ type Commander struct {
 	RuntimeName string
 	Notify      string
 	Notifier    notify.Notifier
-	RetryCount  map[string]int
 }
 
 // New creates a new Commander instance
@@ -32,10 +31,9 @@ func New(runtimeName, notifyName string) *Commander {
 	}
 
 	return &Commander{
-		RuntimeName:   runtimeName,
-		Notify: notifyName,
-		Notifier:      n,
-		RetryCount:    make(map[string]int),
+		RuntimeName: runtimeName,
+		Notify:      notifyName,
+		Notifier:    n,
 	}
 }
 
