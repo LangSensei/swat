@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/LangSensei/swat/commander/runtime"
 )
 
 // Dispatch creates a new operation in _unclassified and starts async classify+enrich+launch
@@ -70,8 +71,14 @@ func (c *Commander) processOperation(op *Operation) {
 		filepath.Join(c.SwatRoot, "squads"),
 	)
 
-	cmd := exec.Command("copilot", "-p", prompt, "--yolo", "--output-format", "json", "--effort", "xhigh")
-	cmd.Dir = unclassifiedDir
+	// Run classify+enrich via runtime adapter
+	rt, err := runtime.New("")
+	if err != nil {
+		c.failOperation(op, fmt.Sprintf("init runtime: %v", err))
+		return
+	}
+
+	cmd := rt.BuildCommand(prompt, unclassifiedDir)
 
 	logPath := filepath.Join(unclassifiedDir, "classify.log")
 	logFile, err := os.Create(logPath)
@@ -180,12 +187,15 @@ func (c *Commander) Cancel(opID string) error {
 	return c.SaveOperation(op)
 }
 
-// launchCopilot starts a Copilot CLI process for the operation
+// launchAgent starts a runtime agent process for the operation
 func (c *Commander) launchCopilot(op *Operation, opDir string) error {
-	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
+	rt, err := runtime.New("")
+	if err != nil {
+		return fmt.Errorf("init runtime: %w", err)
+	}
 
-	cmd := exec.Command("copilot", "-p", prompt, "--yolo", "--output-format", "json", "--effort", "xhigh")
-	cmd.Dir = opDir
+	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
+	cmd := rt.BuildCommand(prompt, opDir)
 
 	logPath := filepath.Join(opDir, "copilot.log")
 	logFile, err := os.Create(logPath)
@@ -222,17 +232,22 @@ func (c *Commander) launchCopilot(op *Operation, opDir string) error {
 
 // provision copies squad snapshot, skills, hooks, and protocol into the operation directory
 func (c *Commander) provision(op *Operation, opDir string) error {
+	rt, err := runtime.New("")
+	if err != nil {
+		return fmt.Errorf("init runtime: %w", err)
+	}
+
 	bpDir := filepath.Join(c.SwatRoot, "blueprints")
 	squadBP := filepath.Join(bpDir, "squads", op.Squad)
 	frameworkDir := filepath.Join(bpDir, "squads", "_framework")
 
-	// Copy PROTOCOL.md → AGENTS.md (Copilot CLI auto-injects AGENTS.md)
+	// Copy PROTOCOL.md → agent file (runtime-specific name, e.g. AGENTS.md for Copilot)
 	protocol, err := os.ReadFile(filepath.Join(frameworkDir, "PROTOCOL.md"))
 	if err != nil {
 		return fmt.Errorf("read protocol: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(opDir, "AGENTS.md"), protocol, 0644); err != nil {
-		return fmt.Errorf("write AGENTS.md: %w", err)
+	if err := rt.WriteAgentFile(opDir, protocol); err != nil {
+		return err
 	}
 
 	// Copy squad blueprint snapshot to .squad/ (read-only reference)
@@ -241,22 +256,22 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 		return fmt.Errorf("copy squad snapshot: %w", err)
 	}
 
-	// Compose .mcp.json from resolved MCP dependencies
+	// Compose MCP config from resolved MCP dependencies
 	resolvedMCPs := c.resolveMCPDependencies(op.Squad)
 	if len(resolvedMCPs) > 0 {
 		mcpConfig := composeMCPConfig(c.SwatRoot, resolvedMCPs)
 		if mcpConfig != "" {
-			os.WriteFile(filepath.Join(opDir, ".mcp.json"), []byte(mcpConfig), 0644)
+			rt.WriteMCPConfig(opDir, mcpConfig)
 		}
 	}
 
 	// Copy skills (resolve dependencies recursively)
-	// Skill content (excluding hooks/) → .github/skills/<name>/
-	// Skill hooks/ → .github/hooks/ (merged across all skills)
+	// Skill content (excluding hooks/) → <dotDir>/skills/<name>/
+	// Skill hooks/ → <dotDir>/hooks/ (merged across all skills)
 	skillsRoot := filepath.Join(c.SwatRoot, "blueprints", "skills")
 	resolvedSkills := c.resolveDependencies(op.Squad)
-	destSkillsDir := filepath.Join(opDir, ".github", "skills")
-	destHooksDir := filepath.Join(opDir, ".github", "hooks")
+	destSkillsDir := filepath.Join(opDir, rt.DotDir(), "skills")
+	destHooksDir := filepath.Join(opDir, rt.DotDir(), "hooks")
 	hooksExclude := map[string]bool{"hooks": true}
 
 	for _, skill := range resolvedSkills {
@@ -275,10 +290,8 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 		}
 	}
 
-	// git init — Copilot CLI requires a git repo to discover .github/hooks/
-	gitInit := exec.Command("git", "init")
-	gitInit.Dir = opDir
-	gitInit.Run() // best-effort; hooks won't fire without it but operation can still proceed
+	// Runtime-specific hook installation (e.g. git init for Copilot hook discovery)
+	rt.InstallHooks(opDir)
 
 	return nil
 }
