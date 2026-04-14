@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/pipeline"
 	"github.com/LangSensei/swat/commander/pipeline/provision"
@@ -62,7 +61,7 @@ func (c *Commander) processOperation(op *operation.Operation) {
 		return
 	}
 
-	if err := provision.Run(rt, reloaded, destDir, layout.Root(), c.RuntimeName, c.NotifyBackend); err != nil {
+	if err := provision.Run(rt, reloaded, destDir, c.RuntimeName, c.NotifyBackend); err != nil {
 		log.Printf("[dispatch] %s: provision failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
 		return

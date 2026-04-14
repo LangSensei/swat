@@ -5,13 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/LangSensei/swat/commander/layout"
 )
 
 // ComposeMCPConfig builds a map of MCP server entries from individual config files.
 // runtimeName and notifyBackend are injected as --runtime and --notify flags
 // into the "swat" server args, if present.
-func ComposeMCPConfig(swatRoot, runtimeName, notifyBackend string, mcps []string) map[string]interface{} {
-	mcpsDir := filepath.Join(swatRoot, "blueprints", "mcps")
+func ComposeMCPConfig(runtimeName, notifyBackend string, mcps []string) map[string]interface{} {
+	mcpsDir := layout.BlueprintMCPsDir()
 	servers := make(map[string]interface{})
 	for _, name := range mcps {
 		path := filepath.Join(mcpsDir, name+".json")

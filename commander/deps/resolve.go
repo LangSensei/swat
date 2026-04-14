@@ -3,26 +3,25 @@ package deps
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/LangSensei/swat/commander/layout"
 )
 
 // ResolveDependencies recursively resolves all skill dependencies for a squad.
-func ResolveDependencies(swatRoot, squad string) []string {
-	bpDir := filepath.Join(swatRoot, "blueprints")
+func ResolveDependencies(squad string) []string {
 	visited := make(map[string]bool)
 	var result []string
 
-	// Collect initial skills from protocol and manifest
 	var seeds []string
-	protocolPath := filepath.Join(bpDir, "squads", "_framework", "PROTOCOL.md")
+	protocolPath := filepath.Join(layout.BlueprintFrameworkDir(), "PROTOCOL.md")
 	if data, err := os.ReadFile(protocolPath); err == nil {
 		seeds = append(seeds, ParseDependencyList(string(data), "skills")...)
 	}
-	manifestPath := filepath.Join(bpDir, "squads", squad, "MANIFEST.md")
+	manifestPath := filepath.Join(layout.BlueprintSquadDir(squad), "MANIFEST.md")
 	if data, err := os.ReadFile(manifestPath); err == nil {
 		seeds = append(seeds, ParseDependencyList(string(data), "skills")...)
 	}
 
-	// BFS to resolve transitive dependencies
 	queue := seeds
 	for len(queue) > 0 {
 		skill := queue[0]
@@ -33,8 +32,7 @@ func ResolveDependencies(swatRoot, squad string) []string {
 		visited[skill] = true
 		result = append(result, skill)
 
-		// Check skill's own dependencies
-		skillMD := filepath.Join(swatRoot, "blueprints", "skills", skill, "SKILL.md")
+		skillMD := filepath.Join(layout.BlueprintSkillsDir(), skill, "SKILL.md")
 		if data, err := os.ReadFile(skillMD); err == nil {
 			for _, dep := range ParseDependencyList(string(data), "skills") {
 				if !visited[dep] {
@@ -47,13 +45,11 @@ func ResolveDependencies(swatRoot, squad string) []string {
 }
 
 // ResolveMCPDependencies collects all MCP names from protocol, manifest, and transitive skills.
-func ResolveMCPDependencies(swatRoot, squad string) []string {
-	bpDir := filepath.Join(swatRoot, "blueprints")
+func ResolveMCPDependencies(squad string) []string {
 	seen := make(map[string]bool)
 	var result []string
 
-	// Protocol MCPs
-	if data, err := os.ReadFile(filepath.Join(bpDir, "squads", "_framework", "PROTOCOL.md")); err == nil {
+	if data, err := os.ReadFile(filepath.Join(layout.BlueprintFrameworkDir(), "PROTOCOL.md")); err == nil {
 		for _, m := range ParseDependencyList(string(data), "mcps") {
 			if !seen[m] {
 				seen[m] = true
@@ -61,8 +57,7 @@ func ResolveMCPDependencies(swatRoot, squad string) []string {
 			}
 		}
 	}
-	// Manifest MCPs
-	if data, err := os.ReadFile(filepath.Join(bpDir, "squads", squad, "MANIFEST.md")); err == nil {
+	if data, err := os.ReadFile(filepath.Join(layout.BlueprintSquadDir(squad), "MANIFEST.md")); err == nil {
 		for _, m := range ParseDependencyList(string(data), "mcps") {
 			if !seen[m] {
 				seen[m] = true
@@ -70,9 +65,8 @@ func ResolveMCPDependencies(swatRoot, squad string) []string {
 			}
 		}
 	}
-	// Transitive MCPs from resolved skills
-	for _, skill := range ResolveDependencies(swatRoot, squad) {
-		skillMD := filepath.Join(swatRoot, "blueprints", "skills", skill, "SKILL.md")
+	for _, skill := range ResolveDependencies(squad) {
+		skillMD := filepath.Join(layout.BlueprintSkillsDir(), skill, "SKILL.md")
 		if data, err := os.ReadFile(skillMD); err == nil {
 			for _, m := range ParseDependencyList(string(data), "mcps") {
 				if !seen[m] {

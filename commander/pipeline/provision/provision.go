@@ -14,7 +14,7 @@ import (
 )
 
 // Run copies squad snapshot, skills, hooks, and protocol into the operation directory.
-func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, runtimeName, notifyBackend string) error {
+func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, runtimeName, notifyBackend string) error {
 	squadBP := layout.BlueprintSquadDir(op.Squad)
 
 	protocol, err := os.ReadFile(filepath.Join(layout.BlueprintFrameworkDir(), "PROTOCOL.md"))
@@ -29,15 +29,15 @@ func Run(rt runtime.RuntimeAdapter, op *operation.Operation, opDir, swatRoot, ru
 		return err
 	}
 
-	resolvedMCPs := deps.ResolveMCPDependencies(swatRoot, op.Squad)
-	servers := ComposeMCPConfig(swatRoot, runtimeName, notifyBackend, resolvedMCPs)
+	resolvedMCPs := deps.ResolveMCPDependencies(op.Squad)
+	servers := ComposeMCPConfig(runtimeName, notifyBackend, resolvedMCPs)
 	if len(servers) > 0 {
 		if err := rt.ComposeMCPConfig(opDir, servers); err != nil {
 			return err
 		}
 	}
 
-	resolvedSkills := deps.ResolveDependencies(swatRoot, op.Squad)
+	resolvedSkills := deps.ResolveDependencies(op.Squad)
 	if err := rt.ComposeSkills(layout.BlueprintSkillsDir(), resolvedSkills, opDir); err != nil {
 		return err
 	}
