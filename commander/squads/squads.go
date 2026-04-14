@@ -1,4 +1,4 @@
-package commander
+package squads
 
 import (
 	"encoding/json"
@@ -31,44 +31,70 @@ type SkillPrereq struct {
 	Path  string `json:"path"`
 }
 
-// ListSquads returns all installed squad blueprints.
-func (c *Commander) ListSquads() ([]map[string]string, error) {
-	bpDir := layout.BlueprintDir()
-	entries, err := os.ReadDir(filepath.Join(bpDir, "squads"))
+// List returns all installed squad blueprints.
+func List() ([]map[string]string, error) {
+	entries, err := os.ReadDir(layout.BlueprintSquadsDir())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	var squads []map[string]string
+	var result []map[string]string
 	for _, entry := range entries {
 		if !entry.IsDir() || entry.Name() == "_framework" {
 			continue
 		}
 		info := map[string]string{"name": entry.Name()}
-		manifestPath := filepath.Join(bpDir, "squads", entry.Name(), "MANIFEST.md")
+		manifestPath := filepath.Join(layout.BlueprintSquadDir(entry.Name()), "MANIFEST.md")
 		if data, err := os.ReadFile(manifestPath); err == nil {
 			if desc := deps.ExtractFrontmatterField(string(data), "description"); desc != "" {
 				info["description"] = desc
 			}
 		}
-		squads = append(squads, info)
+		result = append(result, info)
 	}
-	return squads, nil
+	return result, nil
 }
 
-// countSquads returns the number of installed squads.
-func (c *Commander) countSquads() int {
-	squads, err := c.ListSquads()
+// Count returns the number of installed squads.
+func Count() int {
+	squads, err := List()
 	if err != nil {
 		return 0
 	}
 	return len(squads)
 }
 
+// ListSummaries returns a human-readable summary of installed squads.
+func ListSummaries() string {
+	entries, err := os.ReadDir(layout.BlueprintSquadsDir())
+	if err != nil {
+		return "(none installed)"
+	}
+	var lines []string
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "_framework" {
+			continue
+		}
+		name := entry.Name()
+		desc := "(no description)"
+		manifestPath := filepath.Join(layout.BlueprintSquadDir(name), "MANIFEST.md")
+		if data, err := os.ReadFile(manifestPath); err == nil {
+			if d := deps.ExtractFrontmatterField(string(data), "description"); d != "" {
+				desc = d
+			}
+		}
+		lines = append(lines, fmt.Sprintf("• %s — %s", name, desc))
+	}
+	if len(lines) == 0 {
+		return "(none installed)"
+	}
+	return strings.Join(lines, "\n")
+}
+
 // Browse lists all squads available in the marketplace.
-func (c *Commander) Browse() ([]BrowseResult, error) {
+func Browse() ([]BrowseResult, error) {
 	entries, err := ghListDir("squads")
 	if err != nil {
 		return nil, fmt.Errorf("list marketplace squads: %w", err)
@@ -96,18 +122,17 @@ func (c *Commander) Browse() ([]BrowseResult, error) {
 }
 
 // collectPrereqs scans installed skills for prereq declarations in frontmatter.
-func (c *Commander) collectPrereqs(skills []string) []SkillPrereq {
-	bpDir := layout.BlueprintDir()
+func collectPrereqs(skills []string) []SkillPrereq {
 	var prereqs []SkillPrereq
 	for _, skill := range skills {
-		skillMD := filepath.Join(bpDir, "skills", skill, "SKILL.md")
+		skillMD := filepath.Join(layout.BlueprintSkillsDir(), skill, "SKILL.md")
 		data, err := os.ReadFile(skillMD)
 		if err != nil {
 			continue
 		}
 		val := deps.ParseFrontmatterValue(string(data), "prereq")
 		if val != "" {
-			absPath := filepath.Join(bpDir, "skills", skill, val)
+			absPath := filepath.Join(layout.BlueprintSkillsDir(), skill, val)
 			prereqs = append(prereqs, SkillPrereq{Skill: skill, Path: absPath})
 		}
 	}
@@ -115,10 +140,8 @@ func (c *Commander) collectPrereqs(skills []string) []SkillPrereq {
 }
 
 // Install fetches a squad from the marketplace and installs its dependencies.
-// Returns a list of skill prereqs that need user attention (may be empty).
-func (c *Commander) Install(squad string) ([]SkillPrereq, error) {
-	bpDir := layout.BlueprintDir()
-	squadDir := filepath.Join(bpDir, "squads", squad)
+func Install(squad string) ([]SkillPrereq, error) {
+	squadDir := layout.BlueprintSquadDir(squad)
 
 	if platform.FileExists(filepath.Join(squadDir, "MANIFEST.md")) {
 		return nil, fmt.Errorf("squad %q is already installed", squad)
@@ -136,7 +159,7 @@ func (c *Commander) Install(squad string) ([]SkillPrereq, error) {
 	allSkills := deps.ResolveDependencies(squad)
 
 	for _, skill := range allSkills {
-		destSkill := filepath.Join(bpDir, "skills", skill)
+		destSkill := filepath.Join(layout.BlueprintSkillsDir(), skill)
 		if platform.FileExists(destSkill) {
 			continue
 		}
@@ -145,12 +168,10 @@ func (c *Commander) Install(squad string) ([]SkillPrereq, error) {
 		}
 	}
 
-	// Resolve MCPs after skills are downloaded so transitive deps
-	// declared in skill SKILL.md files are visible on disk.
 	allMCPs := deps.ResolveMCPDependencies(squad)
 
 	for _, mcp := range allMCPs {
-		destMCP := filepath.Join(bpDir, "mcps", mcp+".json")
+		destMCP := filepath.Join(layout.BlueprintMCPsDir(), mcp+".json")
 		if platform.FileExists(destMCP) {
 			continue
 		}
@@ -158,20 +179,19 @@ func (c *Commander) Install(squad string) ([]SkillPrereq, error) {
 		if err != nil {
 			return nil, fmt.Errorf("download MCP %q: %w", mcp, err)
 		}
-		os.MkdirAll(filepath.Join(bpDir, "mcps"), 0755)
+		os.MkdirAll(layout.BlueprintMCPsDir(), 0755)
 		if err := os.WriteFile(destMCP, data, 0644); err != nil {
 			return nil, fmt.Errorf("write MCP %q: %w", mcp, err)
 		}
 	}
 
-	prereqs := c.collectPrereqs(allSkills)
+	prereqs := collectPrereqs(allSkills)
 	return prereqs, nil
 }
 
 // Update re-downloads a squad and its dependencies from the marketplace.
-func (c *Commander) Update(squad string) error {
-	bpDir := layout.BlueprintDir()
-	squadDir := filepath.Join(bpDir, "squads", squad)
+func Update(squad string) error {
+	squadDir := layout.BlueprintSquadDir(squad)
 
 	if !platform.FileExists(filepath.Join(squadDir, "MANIFEST.md")) {
 		return fmt.Errorf("squad %q is not installed", squad)
@@ -187,23 +207,22 @@ func (c *Commander) Update(squad string) error {
 	allSkills := deps.ResolveDependencies(squad)
 
 	for _, skill := range allSkills {
-		destSkill := filepath.Join(bpDir, "skills", skill)
+		destSkill := filepath.Join(layout.BlueprintSkillsDir(), skill)
 		os.RemoveAll(destSkill)
 		if err := ghDownloadDir("skills/"+skill, destSkill); err != nil {
 			return fmt.Errorf("download skill %q: %w", skill, err)
 		}
 	}
 
-	// Resolve MCPs after skills are downloaded so transitive deps are visible
 	allMCPs := deps.ResolveMCPDependencies(squad)
 
 	for _, mcp := range allMCPs {
-		destMCP := filepath.Join(bpDir, "mcps", mcp+".json")
+		destMCP := filepath.Join(layout.BlueprintMCPsDir(), mcp+".json")
 		data, err := ghGetFile("mcps/" + mcp + ".json")
 		if err != nil {
 			return fmt.Errorf("download MCP %q: %w", mcp, err)
 		}
-		os.MkdirAll(filepath.Join(bpDir, "mcps"), 0755)
+		os.MkdirAll(layout.BlueprintMCPsDir(), 0755)
 		if err := os.WriteFile(destMCP, data, 0644); err != nil {
 			return fmt.Errorf("write MCP %q: %w", mcp, err)
 		}
@@ -213,21 +232,16 @@ func (c *Commander) Update(squad string) error {
 }
 
 // Uninstall removes a squad blueprint and cleans up orphaned dependencies.
-func (c *Commander) Uninstall(squad string, purge bool) error {
-	bpDir := layout.BlueprintDir()
-	squadBP := filepath.Join(bpDir, "squads", squad)
+// activeOps is a list of operation IDs currently active for this squad (caller checks).
+func Uninstall(squad string, purge bool, activeOpIDs []string) error {
+	squadBP := layout.BlueprintSquadDir(squad)
 
 	if !platform.FileExists(filepath.Join(squadBP, "MANIFEST.md")) {
 		return fmt.Errorf("squad %q is not installed", squad)
 	}
 
-	ops, err := c.ListOperations()
-	if err == nil {
-		for _, op := range ops {
-			if op.Squad == squad && op.Status == "active" {
-				return fmt.Errorf("squad %q has active operation %s — cancel it first", squad, op.OperationID)
-			}
-		}
+	if len(activeOpIDs) > 0 {
+		return fmt.Errorf("squad %q has active operation %s — cancel it first", squad, activeOpIDs[0])
 	}
 
 	if err := os.RemoveAll(squadBP); err != nil {
@@ -241,23 +255,21 @@ func (c *Commander) Uninstall(squad string, purge bool) error {
 		}
 	}
 
-	c.cleanOrphans()
+	CleanOrphans()
 	return nil
 }
 
-// cleanOrphans removes skills and MCPs not referenced by any installed squad.
-func (c *Commander) cleanOrphans() {
-	bpDir := layout.BlueprintDir()
-
+// CleanOrphans removes skills and MCPs not referenced by any installed squad.
+func CleanOrphans() {
 	neededSkills := make(map[string]bool)
 	neededMCPs := make(map[string]bool)
 
-	squads, err := c.ListSquads()
+	installed, err := List()
 	if err != nil {
 		return
 	}
 
-	for _, sq := range squads {
+	for _, sq := range installed {
 		name := sq["name"]
 		for _, skill := range deps.ResolveDependencies(name) {
 			neededSkills[skill] = true
@@ -267,7 +279,7 @@ func (c *Commander) cleanOrphans() {
 		}
 	}
 
-	skillsDir := filepath.Join(bpDir, "skills")
+	skillsDir := layout.BlueprintSkillsDir()
 	if entries, err := os.ReadDir(skillsDir); err == nil {
 		for _, entry := range entries {
 			if entry.IsDir() && !neededSkills[entry.Name()] {
@@ -276,7 +288,7 @@ func (c *Commander) cleanOrphans() {
 		}
 	}
 
-	mcpsDir := filepath.Join(bpDir, "mcps")
+	mcpsDir := layout.BlueprintMCPsDir()
 	if entries, err := os.ReadDir(mcpsDir); err == nil {
 		for _, entry := range entries {
 			name := entry.Name()
@@ -292,7 +304,6 @@ func (c *Commander) cleanOrphans() {
 
 // --- GitHub API helpers ---
 
-// ghToken resolves a GitHub token once: GITHUB_TOKEN env → gh auth token CLI.
 var (
 	ghTokenOnce  sync.Once
 	ghTokenValue string
@@ -311,7 +322,6 @@ func resolveGHToken() string {
 	return ghTokenValue
 }
 
-// ghHTTPGet performs an HTTP GET with optional GitHub auth.
 func ghHTTPGet(url string) (*http.Response, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -325,7 +335,7 @@ func ghHTTPGet(url string) (*http.Response, error) {
 
 type ghEntry struct {
 	Name string `json:"name"`
-	Type string `json:"type"` // "file" or "dir"
+	Type string `json:"type"`
 	Path string `json:"path"`
 }
 

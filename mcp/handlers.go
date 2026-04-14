@@ -12,6 +12,7 @@ import (
 
 	"github.com/LangSensei/swat/commander"
 	"github.com/LangSensei/swat/commander/operation"
+	"github.com/LangSensei/swat/commander/squads"
 )
 
 // JSON-RPC types
@@ -292,7 +293,7 @@ func (s *Server) handleCancel(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleSquads(args map[string]interface{}) toolResult {
-	squads, err := s.Commander.ListSquads()
+	squads, err := squads.List()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list squads failed: %v", err)}},
@@ -372,7 +373,7 @@ func (s *Server) handleInstall(args map[string]interface{}) toolResult {
 		}
 	}
 
-	prereqs, err := s.Commander.Install(squad)
+	prereqs, err := squads.Install(squad)
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("install failed: %v", err)}},
@@ -405,7 +406,17 @@ func (s *Server) handleUninstall(args map[string]interface{}) toolResult {
 
 	purge, _ := args["purge"].(bool)
 
-	if err := s.Commander.Uninstall(squad, purge); err != nil {
+	// Check for active operations
+	var activeIDs []string
+	if ops, err := s.Commander.ListOperations(); err == nil {
+		for _, op := range ops {
+			if op.Squad == squad && op.Status == "active" {
+				activeIDs = append(activeIDs, op.OperationID)
+			}
+		}
+	}
+
+	if err := squads.Uninstall(squad, purge, activeIDs); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("uninstall failed: %v", err)}},
 			IsError: true,
@@ -422,7 +433,7 @@ func (s *Server) handleUninstall(args map[string]interface{}) toolResult {
 }
 
 func (s *Server) handleBrowse(args map[string]interface{}) toolResult {
-	results, err := s.Commander.Browse()
+	results, err := squads.Browse()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("browse failed: %v", err)}},
@@ -449,7 +460,7 @@ func (s *Server) handleUpdate(args map[string]interface{}) toolResult {
 		}
 	}
 
-	if err := s.Commander.Update(squad); err != nil {
+	if err := squads.Update(squad); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("update failed: %v", err)}},
 			IsError: true,

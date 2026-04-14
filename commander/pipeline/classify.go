@@ -5,14 +5,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/LangSensei/swat/commander/deps"
 	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
 	"github.com/LangSensei/swat/commander/runtime"
+	"github.com/LangSensei/swat/commander/squads"
 )
 
 // Classify runs the LLM-based classify+enrich step on an unclassified operation.
@@ -67,7 +66,7 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, reloaded.Squad)
 
 	if reloaded.Squad == "" {
-		squads := listSquadSummaries()
+		squads := squads.ListSummaries()
 		if notifier != nil {
 			notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, squads))
 		}
@@ -91,30 +90,4 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 	}
 
 	return reloaded, destDir, nil
-}
-
-func listSquadSummaries() string {
-	entries, err := os.ReadDir(filepath.Join(layout.BlueprintDir(), "squads"))
-	if err != nil {
-		return "(none installed)"
-	}
-	var lines []string
-	for _, entry := range entries {
-		if !entry.IsDir() || entry.Name() == "_framework" {
-			continue
-		}
-		name := entry.Name()
-		desc := "(no description)"
-		manifestPath := filepath.Join(layout.BlueprintSquadDir(name), "MANIFEST.md")
-		if data, err := os.ReadFile(manifestPath); err == nil {
-			if d := deps.ExtractFrontmatterField(string(data), "description"); d != "" {
-				desc = d
-			}
-		}
-		lines = append(lines, fmt.Sprintf("• %s — %s", name, desc))
-	}
-	if len(lines) == 0 {
-		return "(none installed)"
-	}
-	return strings.Join(lines, "\n")
 }
