@@ -65,6 +65,15 @@ func (c *Commander) handleActive(op *Operation) {
 		c.RecentFailures++
 	}
 	c.SaveOperation(op)
+
+	// Send desktop notification on abnormal exit (crash/timeout/fail).
+	// Successful completions rely on the Operator calling swat_notify during debrief.
+	if c.Notifier != nil && op.Status != "completed" {
+		msg := "Operation " + op.OperationID + " failed"
+		if err := c.Notifier.Notify(msg); err != nil {
+			log.Printf("[scan] notify error: %v", err)
+		}
+	}
 }
 
 // ShouldReview determines if LLM review is needed

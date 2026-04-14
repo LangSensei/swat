@@ -3,11 +3,8 @@
 package runtime
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -56,12 +53,9 @@ type RuntimeAdapter interface {
 	BuildCommand(prompt, workDir string) *exec.Cmd
 }
 
-// New creates a RuntimeAdapter. Reads the RUNTIME setting from
-// ~/.swat/.env, defaulting to "copilot" if the file is missing or does not
-// contain a RUNTIME line. This allows dynamic runtime switching between
-// operations without restarting Commander.
-func New() (RuntimeAdapter, error) {
-	name := readRuntimeFromEnvFile()
+// New creates a RuntimeAdapter for the given runtime name.
+// If name is empty, defaults to "copilot".
+func New(name string) (RuntimeAdapter, error) {
 	if name == "" {
 		name = "copilot"
 	}
@@ -73,31 +67,4 @@ func New() (RuntimeAdapter, error) {
 	default:
 		return nil, fmt.Errorf("unknown runtime: %q", name)
 	}
-}
-
-// readRuntimeFromEnvFile reads the RUNTIME value from ~/.swat/.env.
-// Returns empty string if the file doesn't exist or has no RUNTIME line.
-func readRuntimeFromEnvFile() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	f, err := os.Open(filepath.Join(home, ".swat", ".env"))
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "#") || !strings.Contains(line, "=") {
-			continue
-		}
-		key, value, _ := strings.Cut(line, "=")
-		if strings.TrimSpace(key) == "RUNTIME" {
-			return strings.TrimSpace(value)
-		}
-	}
-	return ""
 }

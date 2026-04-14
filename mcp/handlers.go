@@ -150,6 +150,8 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 		return s.handleBrowse(params.Arguments)
 	case "swat_squad_update":
 		return s.handleUpdate(params.Arguments)
+	case "swat_notify":
+		return s.handleNotify(params.Arguments)
 	default:
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("unknown tool: %s", params.Name)}},
@@ -463,5 +465,33 @@ func (s *Server) errorResponse(id interface{}, code int, msg string) *jsonrpcRes
 		JSONRPC: "2.0",
 		ID:      id,
 		Error:   &rpcError{Code: code, Message: msg},
+	}
+}
+
+func (s *Server) handleNotify(args map[string]interface{}) toolResult {
+	message, _ := args["message"].(string)
+	if message == "" {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: "message is required"}},
+			IsError: true,
+		}
+	}
+
+	if s.Notifier == nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: "notification backend not configured"}},
+			IsError: true,
+		}
+	}
+
+	if err := s.Notifier.Notify(message); err != nil {
+		return toolResult{
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("notify failed: %v", err)}},
+			IsError: true,
+		}
+	}
+
+	return toolResult{
+		Content: []contentBlock{{Type: "text", Text: "notification sent"}},
 	}
 }

@@ -13,14 +13,32 @@ import (
 var version = "dev"
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "--version" {
-		fmt.Printf("swat %s\n", version)
-		os.Exit(0)
+	// Parse CLI flags
+	runtimeName := "copilot"
+	notifyBackend := "desktop"
+	mcpOnly := false
+
+	for i := 1; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "--version":
+			fmt.Printf("swat %s\n", version)
+			os.Exit(0)
+		case "--mcp-only":
+			mcpOnly = true
+		case "--runtime":
+			i++
+			if i < len(os.Args) {
+				runtimeName = os.Args[i]
+			}
+		case "--notify":
+			i++
+			if i < len(os.Args) {
+				notifyBackend = os.Args[i]
+			}
+		}
 	}
 
-	mcpOnly := len(os.Args) > 1 && os.Args[1] == "--mcp-only"
-
-	cmdr := commander.New("~/.swat")
+	cmdr := commander.New("~/.swat", runtimeName, notifyBackend)
 	if !mcpOnly {
 		go cmdr.BackgroundLoop(60 * time.Second)
 		log.Println("SWAT Commander starting...")

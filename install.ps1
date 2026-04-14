@@ -107,20 +107,6 @@ function Install-Blueprints {
     Write-Host "  https://github.com/LangSensei/swat-marketplace"
 }
 
-function Setup-Runtime {
-    New-Item -ItemType Directory -Path (Join-Path $SwatHome "squads") -Force | Out-Null
-
-    # Create default .env if it doesn't exist (existing files are never modified)
-    $envFile = Join-Path $SwatHome ".env"
-    if (-not (Test-Path $envFile)) {
-        @"
-# SWAT configuration
-# Runtime: copilot | gemini
-RUNTIME=copilot
-"@ | Set-Content $envFile -Encoding UTF8
-        Ok "Created $envFile"
-    }
-}
 
 # --- Post-Install ---
 
@@ -153,7 +139,6 @@ Check-Prereqs
 Fetch-Release
 Install-Binary
 Install-Blueprints
-Setup-Runtime
 Post-Install
 Cleanup
 
@@ -163,6 +148,10 @@ Write-Host ""
 Info "Next steps:"
 Write-Host "  1. Add SWAT MCP server to your agent config:"
 Write-Host "     {`"mcpServers`":{`"swat`":{`"command`":`"swat`",`"args`":[]}}}"
-Write-Host "  2. Change runtime: edit ~/.swat/.env (default: copilot)"
-Write-Host "  3. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
+Write-Host ""
+Write-Host "  Options (add to args):"
+Write-Host "     --runtime <name>   Agent runtime: copilot (default), gemini"
+Write-Host "     --notify <backend> Notifications: desktop (default)"
+Write-Host ""
+Write-Host "  2. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
 Write-Host ""

@@ -1,6 +1,7 @@
 package commander
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -87,15 +88,25 @@ func (c *Commander) resolveMCPDependencies(squad string) []string {
 	return result
 }
 
-// composeMCPConfig builds .mcp.json from individual MCP config files
-func composeMCPConfig(swatRoot string, mcps []string) string {
+// composeMCPConfig builds .mcp.json from individual MCP config files.
+// runtimeName and notifyBackend are injected as --runtime and --notify flags
+// into the "swat" server args, if present.
+func composeMCPConfig(swatRoot, runtimeName, notifyBackend string, mcps []string) string {
 	mcpsDir := filepath.Join(swatRoot, "blueprints", "mcps")
 	servers := make(map[string]string)
 	for _, name := range mcps {
 		path := filepath.Join(mcpsDir, name+".json")
-		if data, err := os.ReadFile(path); err == nil {
-			servers[name] = strings.TrimSpace(string(data))
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
 		}
+		raw := strings.TrimSpace(string(data))
+
+		// Inject --runtime and --notify into the swat server entry
+		if name == "swat" {
+			raw = injectSwatArgs(raw, runtimeName, notifyBackend)
+		}
+		servers[name] = raw
 	}
 	if len(servers) == 0 {
 		return ""
@@ -112,6 +123,39 @@ func composeMCPConfig(swatRoot string, mcps []string) string {
 	}
 	sb.WriteString("\n  }\n}\n")
 	return sb.String()
+}
+
+// injectSwatArgs adds --runtime and --notify flags to a swat MCP server JSON config.
+func injectSwatArgs(raw, runtimeName, notifyBackend string) string {
+	var obj map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+		return raw
+	}
+
+	var existing []string
+	if args, ok := obj["args"]; ok {
+		if arr, ok := args.([]interface{}); ok {
+			for _, a := range arr {
+				if s, ok := a.(string); ok {
+					existing = append(existing, s)
+				}
+			}
+		}
+	}
+
+	if runtimeName != "" {
+		existing = append(existing, "--runtime", runtimeName)
+	}
+	if notifyBackend != "" {
+		existing = append(existing, "--notify", notifyBackend)
+	}
+	obj["args"] = existing
+
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return raw
+	}
+	return string(out)
 }
 
 // parseDependencyList extracts a dependency list from frontmatter, e.g. "skills: [a, b]"
