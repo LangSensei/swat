@@ -130,7 +130,7 @@ func collectPrereqs(skills []string) []SkillPrereq {
 		if err != nil {
 			continue
 		}
-		val := deps.ParseFrontmatterValue(string(data), "prereq")
+		val := deps.ExtractFrontmatterField(string(data), "prereq")
 		if val != "" {
 			absPath := filepath.Join(layout.BlueprintSkillsDir(), skill, val)
 			prereqs = append(prereqs, SkillPrereq{Skill: skill, Path: absPath})

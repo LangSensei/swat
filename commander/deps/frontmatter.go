@@ -66,7 +66,3 @@ func ExtractFrontmatterField(md, field string) string {
 	}
 	return strings.Trim(val, "\"'")
 }
-
-// ParseFrontmatterValue is an alias for ExtractFrontmatterField.
-// Deprecated: use ExtractFrontmatterField directly.
-var ParseFrontmatterValue = ExtractFrontmatterField
