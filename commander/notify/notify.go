@@ -16,7 +16,7 @@ type Notifier interface {
 }
 
 // New creates a Notifier for the given backend name.
-// Supported backends: "desktop" (default).
+// Supported backends: "desktop" (default), "openclaw".
 func New(backend string) (Notifier, error) {
 	if backend == "" {
 		backend = "desktop"
@@ -26,6 +26,8 @@ func New(backend string) (Notifier, error) {
 	switch backend {
 	case "desktop":
 		return &DesktopNotifier{}, nil
+	case "openclaw":
+		return newOpenClawNotifier()
 	default:
 		return nil, fmt.Errorf("unknown notify backend: %q", backend)
 	}
