@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gofrs/flock"
+	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/platform"
 )
 
@@ -146,6 +147,10 @@ func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 	key := strings.ReplaceAll(opDir, "\\", "/")
 	folders[key] = "TRUST_FOLDER"
 
+	// Trust the entire .swat directory so Gemini CLI can read blueprints
+	swatKey := strings.ReplaceAll(layout.Root(), "\\", "/")
+	folders[swatKey] = "TRUST_FOLDER"
+
 	out, err := json.MarshalIndent(folders, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal trustedFolders.json: %w", err)
@@ -159,7 +164,7 @@ func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 
 // BuildCommand constructs the Gemini CLI command with standard flags.
 func (a *GeminiAdapter) BuildCommand(prompt, workDir string) *exec.Cmd {
-	cmd := exec.Command("gemini", "-p", prompt, "--yolo", "--output-format", "json")
+	cmd := exec.Command("gemini", "-p", prompt, "--yolo", "--output-format", "stream-json")
 	cmd.Dir = workDir
 	return cmd
 }
