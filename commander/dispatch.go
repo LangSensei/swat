@@ -71,7 +71,7 @@ func (c *Commander) processOperation(op *Operation) {
 		filepath.Join(c.SwatRoot, "squads"),
 	)
 
-	// Run classify+enrich via runtime adapter
+	// Create runtime adapter once for this operation
 	rt, err := runtime.New("")
 	if err != nil {
 		c.failOperation(op, fmt.Sprintf("init runtime: %v", err))
@@ -142,14 +142,14 @@ func (c *Commander) processOperation(op *Operation) {
 		return
 	}
 
-	// Provision and launch
-	if err := c.provision(reloaded, destDir); err != nil {
+	// Provision and launch — reuse the same runtime adapter
+	if err := c.provision(rt, reloaded, destDir); err != nil {
 		log.Printf("[dispatch] %s: provision failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
 		return
 	}
 
-	if err := c.launchCopilot(reloaded, destDir); err != nil {
+	if err := c.launchAgent(rt, reloaded, destDir); err != nil {
 		log.Printf("[dispatch] %s: launch failed: %v", op.OperationID, err)
 		c.failOperation(reloaded, fmt.Sprintf("launch: %v", err))
 		return
@@ -188,11 +188,7 @@ func (c *Commander) Cancel(opID string) error {
 }
 
 // launchAgent starts a runtime agent process for the operation
-func (c *Commander) launchCopilot(op *Operation, opDir string) error {
-	rt, err := runtime.New("")
-	if err != nil {
-		return fmt.Errorf("init runtime: %w", err)
-	}
+func (c *Commander) launchAgent(rt runtime.RuntimeAdapter, op *Operation, opDir string) error {
 
 	prompt := "Begin operation. AGENTS.md contains your protocol. Read it first."
 	cmd := rt.BuildCommand(prompt, opDir)
@@ -231,12 +227,7 @@ func (c *Commander) launchCopilot(op *Operation, opDir string) error {
 }
 
 // provision copies squad snapshot, skills, hooks, and protocol into the operation directory
-func (c *Commander) provision(op *Operation, opDir string) error {
-	rt, err := runtime.New("")
-	if err != nil {
-		return fmt.Errorf("init runtime: %w", err)
-	}
-
+func (c *Commander) provision(rt runtime.RuntimeAdapter, op *Operation, opDir string) error {
 	bpDir := filepath.Join(c.SwatRoot, "blueprints")
 	squadBP := filepath.Join(bpDir, "squads", op.Squad)
 	frameworkDir := filepath.Join(bpDir, "squads", "_framework")
@@ -251,9 +242,8 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	}
 
 	// Copy squad blueprint snapshot to .squad/ (read-only reference)
-	squadSnapshotDir := filepath.Join(opDir, ".squad")
-	if err := copyDir(squadBP, squadSnapshotDir); err != nil {
-		return fmt.Errorf("copy squad snapshot: %w", err)
+	if err := rt.CopySquad(squadBP, opDir); err != nil {
+		return err
 	}
 
 	// Compose MCP config from resolved MCP dependencies
@@ -266,28 +256,10 @@ func (c *Commander) provision(op *Operation, opDir string) error {
 	}
 
 	// Copy skills (resolve dependencies recursively)
-	// Skill content (excluding hooks/) → <dotDir>/skills/<name>/
-	// Skill hooks/ → <dotDir>/hooks/ (merged across all skills)
 	skillsRoot := filepath.Join(c.SwatRoot, "blueprints", "skills")
 	resolvedSkills := c.resolveDependencies(op.Squad)
-	destSkillsDir := filepath.Join(opDir, rt.DotDir(), "skills")
-	destHooksDir := filepath.Join(opDir, rt.DotDir(), "hooks")
-	hooksExclude := map[string]bool{"hooks": true}
-
-	for _, skill := range resolvedSkills {
-		srcSkill := filepath.Join(skillsRoot, skill)
-		if _, err := os.Stat(srcSkill); err != nil {
-			continue
-		}
-
-		// Copy skill content excluding hooks/
-		copyDirExclude(srcSkill, filepath.Join(destSkillsDir, skill), hooksExclude)
-
-		// Copy skill hooks if they exist
-		srcHooks := filepath.Join(srcSkill, "hooks")
-		if dirExists(srcHooks) {
-			copyDir(srcHooks, destHooksDir)
-		}
+	if err := rt.CopySkills(skillsRoot, resolvedSkills, opDir); err != nil {
+		return err
 	}
 
 	// Runtime-specific hook installation (e.g. git init for Copilot hook discovery)

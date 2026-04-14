@@ -3,9 +3,11 @@
 package runtime
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -29,6 +31,12 @@ type RuntimeAdapter interface {
 	// WriteMCPConfig writes the MCP configuration into the operation directory
 	WriteMCPConfig(opDir string, content string) error
 
+	// CopySquad copies the squad blueprint snapshot into opDir/.squad/
+	CopySquad(squadBPDir, opDir string) error
+
+	// CopySkills copies resolved skills into the runtime's dotDir (skills + hooks)
+	CopySkills(skillsRoot string, resolvedSkills []string, opDir string) error
+
 	// InstallHooks runs any runtime-specific initialization (e.g. git init for hook discovery)
 	InstallHooks(opDir string) error
 
@@ -36,11 +44,13 @@ type RuntimeAdapter interface {
 	BuildCommand(prompt, workDir string) *exec.Cmd
 }
 
-// New creates a RuntimeAdapter by name. Reads the RUNTIME environment variable
-// if name is empty, defaulting to "copilot".
+// New creates a RuntimeAdapter by name. Reads the RUNTIME setting from
+// ~/.swat/swat.env if name is empty, defaulting to "copilot" if the file
+// is missing or does not contain a RUNTIME line. This allows dynamic runtime
+// switching between operations without restarting Commander.
 func New(name string) (RuntimeAdapter, error) {
 	if name == "" {
-		name = os.Getenv("RUNTIME")
+		name = readRuntimeFromEnvFile()
 	}
 	if name == "" {
 		name = "copilot"
@@ -53,4 +63,31 @@ func New(name string) (RuntimeAdapter, error) {
 	default:
 		return nil, fmt.Errorf("unknown runtime: %q", name)
 	}
+}
+
+// readRuntimeFromEnvFile reads the RUNTIME value from ~/.swat/swat.env.
+// Returns empty string if the file doesn't exist or has no RUNTIME line.
+func readRuntimeFromEnvFile() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	f, err := os.Open(filepath.Join(home, ".swat", "swat.env"))
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "#") || !strings.Contains(line, "=") {
+			continue
+		}
+		key, value, _ := strings.Cut(line, "=")
+		if strings.TrimSpace(key) == "RUNTIME" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
