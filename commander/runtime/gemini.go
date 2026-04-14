@@ -30,10 +30,91 @@ func NewGeminiAdapter() *GeminiAdapter {
 // Name returns "gemini".
 func (a *GeminiAdapter) Name() string { return "gemini" }
 
+// ComposeHooks copies Gemini-specific hooks from each resolved skill.
+// For each skill, it copies the entire hooks/gemini/ directory to <opDir>/.gemini/hooks/
+// and collects hook JSON configs. After all skills are processed, it reads settings.json
+// once, merges all accumulated hooks, and writes it back once.
+func (a *GeminiAdapter) ComposeHooks(skillsRoot string, resolvedSkills []string, opDir string) error {
+	destHooksDir := filepath.Join(opDir, ".gemini", "hooks")
+	settingsPath := filepath.Join(opDir, ".gemini", "settings.json")
+
+	// Accumulate all hook entries across skills
+	allHooks := make(map[string][]interface{})
+
+	for _, skill := range resolvedSkills {
+		srcHooks := filepath.Join(skillsRoot, skill, "hooks", "gemini")
+		info, err := os.Stat(srcHooks)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+
+		// Copy entire hooks/gemini/ directory to .gemini/hooks/
+		if err := copyDir(srcHooks, destHooksDir); err != nil {
+			return fmt.Errorf("copy hooks for skill %s: %w", skill, err)
+		}
+
+		// Collect hook JSON configs from root-level *.json files
+		entries, err := os.ReadDir(srcHooks)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+				continue
+			}
+			configData, err := os.ReadFile(filepath.Join(srcHooks, entry.Name()))
+			if err != nil {
+				continue
+			}
+			var hookConfig map[string]interface{}
+			if err := json.Unmarshal(configData, &hookConfig); err != nil {
+				return fmt.Errorf("parse hooks config %s for skill %s: %w", entry.Name(), skill, err)
+			}
+			incomingHooks, ok := hookConfig["hooks"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			for event, entries := range incomingHooks {
+				incomingArr, ok := entries.([]interface{})
+				if !ok {
+					continue
+				}
+				allHooks[event] = append(allHooks[event], incomingArr...)
+			}
+		}
+	}
+
+	// Batch write: merge all accumulated hooks into settings.json once
+	if len(allHooks) > 0 {
+		if err := os.MkdirAll(filepath.Dir(settingsPath), 0755); err != nil {
+			return fmt.Errorf("create .gemini dir: %w", err)
+		}
+
+		settings := make(map[string]interface{})
+		if data, err := os.ReadFile(settingsPath); err == nil {
+			if err := json.Unmarshal(data, &settings); err != nil {
+				return fmt.Errorf("parse settings.json: %w", err)
+			}
+		}
+
+		// Set hooks (composed once per provisioning, no merge needed)
+		settings["hooks"] = allHooks
+
+		out, err := json.MarshalIndent(settings, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal settings.json: %w", err)
+		}
+		out = append(out, '\n')
+		if err := os.WriteFile(settingsPath, out, 0644); err != nil {
+			return fmt.Errorf("write settings.json: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // PrepareWorkspace registers the operation directory as a trusted folder in
-// ~/.gemini/trustedFolders.json for all phases. It reads the existing JSON
-// object (or creates {} if not found), adds "<opDir>": "TRUST_FOLDER", and
-// writes back. Paths use forward slashes.
+// ~/.gemini/trustedFolders.json for all phases.
 func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -61,7 +142,6 @@ func (a *GeminiAdapter) PrepareWorkspace(opDir string, _ Phase) error {
 		}
 	}
 
-	// Use forward slashes for the key
 	key := strings.ReplaceAll(opDir, "\\", "/")
 	folders[key] = "TRUST_FOLDER"
 

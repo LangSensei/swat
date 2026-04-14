@@ -32,17 +32,22 @@ type RuntimeAdapter interface {
 	// MCPConfigPath returns the MCP configuration file path relative to operation root (e.g. ".mcp.json")
 	MCPConfigPath() string
 
-	// WriteAgentFile writes the agent instruction file into the operation directory
-	WriteAgentFile(opDir string, content []byte) error
+	// ComposeAgentFile writes the agent instruction file into the operation directory
+	ComposeAgentFile(opDir string, content []byte) error
 
-	// WriteMCPConfig writes the MCP configuration into the operation directory
-	WriteMCPConfig(opDir string, content string) error
+	// ComposeMCPConfig writes server entries into the MCP config file.
+	// Replaces mcpServers entirely while preserving other top-level fields (e.g. hooks).
+	ComposeMCPConfig(opDir string, servers map[string]interface{}) error
 
-	// CopySquad copies the squad blueprint snapshot into opDir/.squad/
-	CopySquad(squadBPDir, opDir string) error
+	// ComposeSquad copies the squad blueprint snapshot into opDir/.squad/
+	ComposeSquad(squadBPDir, opDir string) error
 
-	// CopySkills copies resolved skills into the runtime's dotDir (skills + hooks)
-	CopySkills(skillsRoot string, resolvedSkills []string, opDir string) error
+	// ComposeSkills copies resolved skill content (excluding hooks/) into the runtime's dotDir
+	ComposeSkills(skillsRoot string, resolvedSkills []string, opDir string) error
+
+	// ComposeHooks copies runtime-specific hooks from each resolved skill's
+	// hooks/<runtime>/ subdirectory into the operation directory
+	ComposeHooks(skillsRoot string, resolvedSkills []string, opDir string) error
 
 	// PrepareWorkspace runs runtime-specific workspace initialization for the given phase.
 	// During PhaseClassify this is a no-op for most runtimes; during PhaseOperate it may

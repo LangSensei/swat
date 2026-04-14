@@ -1,7 +1,10 @@
 package runtime
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 // CopilotAdapter implements RuntimeAdapter for the GitHub Copilot CLI.
@@ -22,6 +25,26 @@ func NewCopilotAdapter() *CopilotAdapter {
 
 // Name returns "copilot".
 func (a *CopilotAdapter) Name() string { return "copilot" }
+
+// ComposeHooks copies Copilot-specific hooks from each resolved skill.
+// For each skill, it looks for <skillsRoot>/<skill>/hooks/copilot/ and copies
+// the contents (scripts + JSON config files) to <opDir>/.github/hooks/.
+func (a *CopilotAdapter) ComposeHooks(skillsRoot string, resolvedSkills []string, opDir string) error {
+	destHooksDir := filepath.Join(opDir, ".github", "hooks")
+
+	for _, skill := range resolvedSkills {
+		srcHooks := filepath.Join(skillsRoot, skill, "hooks", "copilot")
+		info, err := os.Stat(srcHooks)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+
+		if err := copyDir(srcHooks, destHooksDir); err != nil {
+			return fmt.Errorf("compose hooks for skill %s: %w", skill, err)
+		}
+	}
+	return nil
+}
 
 // PrepareWorkspace runs workspace initialization for the given phase.
 // During PhaseOperate it runs git init so that Copilot CLI can discover .github/hooks/.

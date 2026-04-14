@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,8 +23,8 @@ func (b *BaseProvisioner) AgentFileName() string { return b.agentFileName }
 // MCPConfigPath returns the runtime-specific MCP config path (e.g. ".mcp.json").
 func (b *BaseProvisioner) MCPConfigPath() string { return b.mcpConfigPath }
 
-// WriteAgentFile writes the agent instruction content to the appropriate file in opDir.
-func (b *BaseProvisioner) WriteAgentFile(opDir string, content []byte) error {
+// ComposeAgentFile writes the agent instruction content to the appropriate file in opDir.
+func (b *BaseProvisioner) ComposeAgentFile(opDir string, content []byte) error {
 	dest := filepath.Join(opDir, b.agentFileName)
 	if err := os.WriteFile(dest, content, 0644); err != nil {
 		return fmt.Errorf("write %s: %w", b.agentFileName, err)
@@ -31,17 +32,41 @@ func (b *BaseProvisioner) WriteAgentFile(opDir string, content []byte) error {
 	return nil
 }
 
-// WriteMCPConfig writes the MCP configuration JSON to the appropriate path in opDir.
-func (b *BaseProvisioner) WriteMCPConfig(opDir string, content string) error {
+// ComposeMCPConfig writes the server entries into the MCP config file at
+// MCPConfigPath(). If the file already exists, other top-level fields (e.g.
+// hooks) are preserved, but mcpServers is replaced entirely.
+func (b *BaseProvisioner) ComposeMCPConfig(opDir string, servers map[string]interface{}) error {
 	dest := filepath.Join(opDir, b.mcpConfigPath)
-	if err := os.WriteFile(dest, []byte(content), 0644); err != nil {
+
+	// Ensure parent directory exists
+	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return fmt.Errorf("create dir for %s: %w", b.mcpConfigPath, err)
+	}
+
+	// Read existing config (or start with empty object)
+	existing := make(map[string]interface{})
+	if data, err := os.ReadFile(dest); err == nil {
+		if err := json.Unmarshal(data, &existing); err != nil {
+			return fmt.Errorf("parse existing %s: %w", b.mcpConfigPath, err)
+		}
+	}
+
+	// Set mcpServers (written once, no merge needed)
+	existing["mcpServers"] = servers
+
+	out, err := json.MarshalIndent(existing, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal %s: %w", b.mcpConfigPath, err)
+	}
+	out = append(out, '\n')
+	if err := os.WriteFile(dest, out, 0644); err != nil {
 		return fmt.Errorf("write %s: %w", b.mcpConfigPath, err)
 	}
 	return nil
 }
 
-// CopySquad copies the squad blueprint snapshot into opDir/.squad/.
-func (b *BaseProvisioner) CopySquad(squadBPDir, opDir string) error {
+// ComposeSquad copies the squad blueprint snapshot into opDir/.squad/.
+func (b *BaseProvisioner) ComposeSquad(squadBPDir, opDir string) error {
 	destDir := filepath.Join(opDir, ".squad")
 	if err := copyDir(squadBPDir, destDir); err != nil {
 		return fmt.Errorf("copy squad snapshot: %w", err)
@@ -49,13 +74,11 @@ func (b *BaseProvisioner) CopySquad(squadBPDir, opDir string) error {
 	return nil
 }
 
-// CopySkills copies resolved skills into the runtime's dotDir.
-// Skill content (excluding hooks/) goes to <dotDir>/skills/<name>/.
-// Skill hooks/ are merged into <dotDir>/hooks/.
-func (b *BaseProvisioner) CopySkills(skillsRoot string, resolvedSkills []string, opDir string) error {
+// ComposeSkills copies resolved skill content into the runtime's dotDir.
+// Only skill content (SKILL.md, etc.) is copied to <dotDir>/skills/<name>/.
+// The hooks/ subdirectory is excluded entirely — hooks are handled by ComposeHooks.
+func (b *BaseProvisioner) ComposeSkills(skillsRoot string, resolvedSkills []string, opDir string) error {
 	destSkillsDir := filepath.Join(opDir, b.dotDir, "skills")
-	destHooksDir := filepath.Join(opDir, b.dotDir, "hooks")
-	hooksExclude := map[string]bool{"hooks": true}
 
 	for _, skill := range resolvedSkills {
 		srcSkill := filepath.Join(skillsRoot, skill)
@@ -63,17 +86,26 @@ func (b *BaseProvisioner) CopySkills(skillsRoot string, resolvedSkills []string,
 			continue
 		}
 
-		// Copy skill content excluding hooks/
-		if err := copyDirExclude(srcSkill, filepath.Join(destSkillsDir, skill), hooksExclude); err != nil {
-			return fmt.Errorf("copy skill %s: %w", skill, err)
-		}
-
-		// Copy skill hooks if they exist
-		srcHooks := filepath.Join(srcSkill, "hooks")
-		if info, err := os.Stat(srcHooks); err == nil && info.IsDir() {
-			if err := copyDir(srcHooks, destHooksDir); err != nil {
-				return fmt.Errorf("copy hooks for skill %s: %w", skill, err)
+		dest := filepath.Join(destSkillsDir, skill)
+		if err := filepath.Walk(srcSkill, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
 			}
+			rel, _ := filepath.Rel(srcSkill, path)
+			if info.IsDir() && info.Name() == "hooks" && rel != "." {
+				return filepath.SkipDir
+			}
+			target := filepath.Join(dest, rel)
+			if info.IsDir() {
+				return os.MkdirAll(target, 0755)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			return os.WriteFile(target, data, info.Mode())
+		}); err != nil {
+			return fmt.Errorf("copy skill %s: %w", skill, err)
 		}
 	}
 	return nil
@@ -81,20 +113,11 @@ func (b *BaseProvisioner) CopySkills(skillsRoot string, resolvedSkills []string,
 
 // copyDir recursively copies a directory tree.
 func copyDir(src, dst string) error {
-	return copyDirExclude(src, dst, nil)
-}
-
-// copyDirExclude recursively copies a directory tree, skipping directories whose
-// base name appears in the exclude set.
-func copyDirExclude(src, dst string, exclude map[string]bool) error {
 	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		rel, _ := filepath.Rel(src, path)
-		if info.IsDir() && exclude[info.Name()] && rel != "." {
-			return filepath.SkipDir
-		}
 		target := filepath.Join(dst, rel)
 		if info.IsDir() {
 			return os.MkdirAll(target, 0755)
