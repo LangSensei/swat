@@ -91,16 +91,32 @@ SWAT exposes 12 MCP tools. Configure your agent to connect:
 Agent → MCP → SWAT Commander (Go) → Squads (AI coding agent sessions)
 ```
 
-1. **Commander** — Go MCP server. Handles dispatch, workspace composition, dependency resolution, scheduling, and completion scanning.
-2. **Squads** — Specialist agents. Each runs as an independent coding agent session with its own skills, MCP tools, and protocol.
+SWAT is **runtime-agnostic**. The Commander orchestrates operations while a pluggable **RuntimeAdapter** handles runtime-specific details (dot-directories, agent files, MCP config paths, hooks).
+
+| Component | Role |
+|-----------|------|
+| **Commander** | Go MCP server. Handles dispatch, workspace composition, dependency resolution, scheduling, and completion scanning. |
+| **Squads** | Specialist agents. Each runs as an independent coding agent session with its own skills, MCP tools, and protocol. |
+| **RuntimeAdapter** | Abstracts runtime differences. Each adapter knows its dot-dir, agent file name, MCP config path, and how to launch the agent. |
+
+### Supported Runtimes
+
+| Runtime | Dot-Dir | Agent File | MCP Config | Launch Command |
+|---------|---------|------------|------------|----------------|
+| `copilot` (default) | `.github/` | `AGENTS.md` | `.mcp.json` | `copilot` |
+| `gemini` | `.gemini/` | `GEMINI.md` | `.gemini/settings.json` | `gemini` |
+
+Set the runtime with `--runtime <name>` (e.g. `swat --runtime gemini`).
 
 ### How It Works
 
 1. You dispatch a task (Commander auto-classifies to the right squad)
-2. Commander provisions the workspace — copies squad snapshot to `.squad/`, skill hooks to `.github/hooks/`, skill content to `.github/skills/`, resolves MCP dependencies, writes AGENTS.md (protocol)
-3. A coding agent session launches in the operation directory, reads AGENTS.md + OPERATION.md
+2. Commander provisions the workspace — copies squad snapshot to `.squad/`, skill hooks to `<dotdir>/hooks/`, skill content to `<dotdir>/skills/`, resolves MCP dependencies, writes the agent file (runtime-specific)
+3. A coding agent session launches in the operation directory, reads the agent file + OPERATION.md
 4. Commander's background loop scans for completion (OPERATION.md status + report.html)
 5. Results surface through your agent
+
+> **Skills vs Hooks:** Skills are runtime-agnostic (shared across all runtimes). Hooks are runtime-specific and live under `hooks/copilot/`, `hooks/gemini/`, etc. in each skill's blueprint.
 
 ### Scheduler
 
@@ -122,7 +138,7 @@ Built-in Go cron scheduler for recurring tasks — zero LLM cost:
 │   │   │   └── TEMPLATE.md
 │   │   └── <squad>/               # Squad blueprints
 │   │       └── MANIFEST.md
-│   ├── skills/                    # Shared skills
+│   ├── skills/                    # Shared skills (runtime-agnostic)
 │   └── mcps/                      # MCP server configs
 │
 ├── squads/                        # Runtime data
@@ -131,12 +147,12 @@ Built-in Go cron scheduler for recurring tasks — zero LLM cost:
 │       └── operations/
 │           └── <id>/              # Operation workspace
 │               ├── OPERATION.md
-│               ├── AGENTS.md      # Protocol (copied from _framework/PROTOCOL.md)
-│               ├── .mcp.json
+│               ├── <agent-file>   # Runtime-specific (AGENTS.md or GEMINI.md)
+│               ├── <mcp-config>   # Runtime-specific (.mcp.json or .gemini/settings.json)
 │               ├── report.html
 │               ├── .squad/        # Squad blueprint snapshot (read-only)
-│               └── .github/
-│                   ├── hooks/     # Skill hooks
+│               └── <dotdir>/      # Runtime-specific (.github/ or .gemini/)
+│                   ├── hooks/     # Skill hooks (runtime-specific)
 │                   └── skills/    # Skill content
 │
 └── schedules/                     # Schedule definitions (JSON)
@@ -146,9 +162,13 @@ Built-in Go cron scheduler for recurring tasks — zero LLM cost:
 ## 🛠️ Prerequisites
 
 - Linux, macOS, or Windows
-- [GitHub Copilot CLI](https://www.npmjs.com/package/@github/copilot) (`npm install -g @github/copilot`)
-- Node.js 18+
 - [GitHub CLI](https://cli.github.com) (authenticated)
+- At least one supported AI coding agent runtime:
+
+| Runtime | Requirements |
+|---------|-------------|
+| **Copilot** (default) | [GitHub Copilot CLI](https://www.npmjs.com/package/@github/copilot) (`npm install -g @github/copilot`), Node.js 18+ |
+| **Gemini** | [Gemini CLI](https://github.com/google-gemini/gemini-cli) installed and available as `gemini` on PATH |
 
 ## 🔨 Building from Source
 
