@@ -18,7 +18,7 @@ irm https://raw.githubusercontent.com/LangSensei/swat/main/install.ps1 | iex
 
 This will:
 1. Download the latest release for your platform
-2. Install the SWAT binary to `~/.swat/bin/` with a symlink at `~/.local/bin/swat` (auto-added to PATH)
+2. Install the SWAT binary to `~/.swat/bin/` with a symlink at `~/.local/bin/swat` (Linux only; auto-added to PATH)
 3. Install framework blueprints to `~/.swat/blueprints/`
 
 ### OpenClaw Integration (Optional)
@@ -83,7 +83,7 @@ SWAT exposes 12 MCP tools. Configure your agent to connect:
 | `--version` | Print the installed version and exit |
 | `--mcp-only` | Start only the MCP server — skip the background commander loop |
 | `--runtime <name>` | Set the AI coding agent runtime (default: `copilot`) |
-| `--notify <backend>` | Set the notification backend (default: `desktop`) |
+| `--notify <target>` | Set the notification target: `desktop`, `openclaw` (default: `desktop`) |
 
 ## 🧠 Architecture
 
