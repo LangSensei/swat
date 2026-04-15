@@ -140,27 +140,25 @@ install_blueprints() {
 
 
 post_install() {
-    # PATH check — auto-add if missing
+    # Symlink to ~/.local/bin (commonly in PATH on Linux/macOS)
+    local local_bin="$HOME/.local/bin"
+    mkdir -p "$local_bin"
+    ln -sf "$BIN_DIR/swat" "$local_bin/swat"
+    ok "Symlinked $local_bin/swat → $BIN_DIR/swat"
+
+    # Also add BIN_DIR to shell profiles as fallback
     if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
         local line="export PATH=\"$BIN_DIR:\$PATH\""
-        local added=false
         for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
             if [[ -f "$rc" ]] && ! grep -qF "$BIN_DIR" "$rc" 2>/dev/null; then
                 echo "" >> "$rc"
                 echo "# Added by SWAT installer" >> "$rc"
                 echo "$line" >> "$rc"
-                added=true
                 ok "Added $BIN_DIR to PATH in $(basename "$rc")"
             fi
         done
-        if [[ "$added" == false ]]; then
-            info "Add to your shell profile:"
-            echo "  $line"
-            echo ""
-        fi
         export PATH="$BIN_DIR:$PATH"
     fi
-
 }
 
 # --- Cleanup ---
