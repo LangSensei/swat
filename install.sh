@@ -192,7 +192,7 @@ main() {
     echo ""
     echo "  Options (add to args):"
     echo "     --runtime <name>   Agent runtime: copilot (default), gemini"
-    echo "     --notify <backend> Notifications: desktop (default), openclaw"
+    echo "     --notify <target>  Notifications: desktop (default), openclaw"
     echo ""
     echo "  2. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
     echo ""
