@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -137,7 +138,10 @@ func CheckDue(dispatch DispatchFunc) {
 
 	// Build set of schedule IDs with in-flight operations
 	inFlight := make(map[string]bool)
-	ops, _ := operation.List()
+	ops, err := operation.List()
+	if err != nil {
+		log.Printf("[schedule] failed to list operations for duplicate detection: %v", err)
+	}
 	for _, op := range ops {
 		if op.Status == "queued" || op.Status == "active" {
 			if strings.HasPrefix(op.Source, "schedule/") {
@@ -166,7 +170,9 @@ func CheckDue(dispatch DispatchFunc) {
 		// Update the dispatched operation's source
 		if op, err := operation.Find(sourceTag); err == nil {
 			op.Source = "schedule/" + s.ID
-			_ = operation.Save(op)
+			if err := operation.Save(op); err != nil {
+				log.Printf("[schedule] %s: failed to save source update: %v", op.OperationID, err)
+			}
 		}
 
 		loc, _ := time.LoadLocation(s.Timezone)
