@@ -35,7 +35,9 @@ func (c *Commander) Dispatch(brief, details string) (*operation.Operation, error
 				now := time.Now().UTC()
 				op.FailedAt = &now
 				op.FailureReason = &reason
-				operation.Save(op)
+				if err := operation.Save(op); err != nil {
+					log.Printf("[dispatch] %s: failed to save panic state: %v", op.OperationID, err)
+				}
 			}
 		}()
 		c.processOperation(op)
@@ -74,12 +76,16 @@ func (c *Commander) processOperation(op *operation.Operation) {
 	log.Printf("[dispatch] %s: launched successfully (squad=%s)", op.OperationID, reloaded.Squad)
 }
 
-func (c *Commander) failOperation(op *operation.Operation, reason string) {
+func (c *Commander) failOperation(op *operation.Operation, reason string) error {
 	now := time.Now().UTC()
 	op.Status = "failed"
 	op.FailedAt = &now
 	op.FailureReason = &reason
-	operation.Save(op)
+	if err := operation.Save(op); err != nil {
+		log.Printf("[dispatch] %s: failed to save failure state: %v", op.OperationID, err)
+		return fmt.Errorf("save failure state: %w", err)
+	}
+	return nil
 }
 
 // Cancel marks an operation as failed and kills the process if active.

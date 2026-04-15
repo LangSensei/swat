@@ -91,7 +91,9 @@ func (c *Commander) handleActive(op *operation.Operation) {
 		op.FailureReason = &reason
 		op.PID = 0
 	}
-	operation.Save(op)
+	if err := operation.Save(op); err != nil {
+		log.Printf("[scan] %s: failed to save collected state: %v", op.OperationID, err)
+	}
 
 	if c.Notifier != nil && op.Status != "completed" {
 		msg := "Operation " + op.OperationID + " failed"
