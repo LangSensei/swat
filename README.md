@@ -31,8 +31,16 @@ If you use [OpenClaw](https://github.com/openclaw/openclaw), install the bridge 
 
 ## 🗑️ Uninstallation
 
+### Linux / macOS
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/LangSensei/swat/main/uninstall.sh | bash
+```
+
+### Windows
+
+```powershell
+irm https://raw.githubusercontent.com/LangSensei/swat/main/uninstall.ps1 | iex
 ```
 
 Add `--purge` to also remove runtime data (operation history).
