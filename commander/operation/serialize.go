@@ -90,6 +90,7 @@ func parseOperationMD(content string) (*Operation, error) {
 	if err != nil {
 		return nil, err
 	}
+	body = strings.TrimLeft(body, "\n") // skip newlines after closing ---
 
 	op := &Operation{}
 	for key, val := range fm {
