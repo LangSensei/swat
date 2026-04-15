@@ -482,7 +482,7 @@ func (s *Server) handleNotify(args map[string]interface{}) toolResult {
 
 	if s.Notifier == nil {
 		return toolResult{
-			Content: []contentBlock{{Type: "text", Text: "notification backend not configured"}},
+			Content: []contentBlock{{Type: "text", Text: "notification target not configured"}},
 			IsError: true,
 		}
 	}

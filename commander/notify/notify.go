@@ -1,4 +1,4 @@
-// Package notify provides notification backends for SWAT.
+// Package notify provides notification targets for SWAT.
 package notify
 
 import (
@@ -11,20 +11,20 @@ type Notifier interface {
 	Notify(message string) error
 }
 
-// New creates a Notifier for the given backend name.
-// Supported backends: "desktop" (default), "openclaw".
-func New(backend string) (Notifier, error) {
-	if backend == "" {
-		backend = "desktop"
+// New creates a Notifier for the given target name.
+// Supported targets: "desktop" (default), "openclaw".
+func New(target string) (Notifier, error) {
+	if target == "" {
+		target = "desktop"
 	}
-	backend = strings.ToLower(backend)
+	target = strings.ToLower(target)
 
-	switch backend {
+	switch target {
 	case "desktop":
 		return &DesktopNotifier{}, nil
 	case "openclaw":
 		return newOpenClawNotifier()
 	default:
-		return nil, fmt.Errorf("unknown notify backend: %q", backend)
+		return nil, fmt.Errorf("unknown notify target: %q", target)
 	}
 }
