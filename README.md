@@ -18,7 +18,7 @@ irm https://raw.githubusercontent.com/LangSensei/swat/main/install.ps1 | iex
 
 This will:
 1. Download the latest release for your platform
-2. Install the SWAT binary to `~/.swat/bin/` with a symlink at `~/.local/bin/swat` (Linux only; auto-added to PATH)
+2. Install the SWAT binary to `~/.swat/bin/` and add it to your PATH (Linux/macOS: appends to `.bashrc`/`.zshrc`; Windows: updates user PATH in the registry)
 3. Install framework blueprints to `~/.swat/blueprints/`
 
 ### OpenClaw Integration (Optional)
