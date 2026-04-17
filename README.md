@@ -133,7 +133,6 @@ Unified task entry point — all tasks (immediate dispatches and recurring sched
 - Recurring tasks: standard 5-field cron expressions with timezone support
 - `immediate` flag for first-run-now behavior
 - Per-file locking for concurrent safety
-- Automatic migration from legacy `schedules/` directory
 
 ## 📂 Directory Structure
 

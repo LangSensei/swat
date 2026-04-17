@@ -48,9 +48,6 @@ func GenerateOpID() string {
 
 // BackgroundLoop runs the Commander's periodic scan.
 func (c *Commander) BackgroundLoop(interval time.Duration) {
-	// One-time migration from legacy schedules to intake
-	intake.MigrateFromSchedules()
-
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

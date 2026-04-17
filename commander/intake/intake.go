@@ -288,66 +288,6 @@ func processRecurring(item *Recurring, dispatch DispatchFunc, now time.Time, fl 
 	}
 }
 
-// MigrateFromSchedules migrates existing schedule files to intake format.
-// Called once during initialization.
-func MigrateFromSchedules() {
-	schedDir := layout.SchedulesDir()
-	intakeDir := layout.IntakeDir()
-
-	// Only migrate if schedules dir exists and intake dir doesn't
-	if _, err := os.Stat(schedDir); os.IsNotExist(err) {
-		return
-	}
-
-	if err := os.MkdirAll(intakeDir, 0755); err != nil {
-		log.Printf("[intake] migration: failed to create intake dir: %v", err)
-		return
-	}
-
-	entries, err := os.ReadDir(schedDir)
-	if err != nil {
-		log.Printf("[intake] migration: failed to read schedules dir: %v", err)
-		return
-	}
-
-	migrated := 0
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
-			continue
-		}
-
-		srcPath := filepath.Join(schedDir, e.Name())
-		data, err := os.ReadFile(srcPath)
-		if err != nil {
-			continue
-		}
-
-		// Parse existing schedule and add type field
-		var raw map[string]interface{}
-		if err := json.Unmarshal(data, &raw); err != nil {
-			continue
-		}
-		raw["type"] = "recurring"
-
-		newData, err := json.MarshalIndent(raw, "", "  ")
-		if err != nil {
-			continue
-		}
-
-		dstPath := filepath.Join(intakeDir, e.Name())
-		if err := os.WriteFile(dstPath, newData, 0644); err != nil {
-			continue
-		}
-		migrated++
-	}
-
-	if migrated > 0 {
-		log.Printf("[intake] migration: migrated %d schedule(s) to intake/", migrated)
-		// Remove old schedules directory after successful migration
-		os.RemoveAll(schedDir)
-	}
-}
-
 // --- internal helpers ---
 
 func jsonPath(id string) string {

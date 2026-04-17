@@ -73,11 +73,6 @@ func UnclassifiedOperationMDPath(opID string) string { return OperationMDPath("_
 // IntakeDir returns the intake queue directory.
 func IntakeDir() string { return filepath.Join(root, "intake") }
 
-// --- Schedules (legacy, used for migration) ---
-
-// SchedulesDir returns the legacy schedules directory.
-func SchedulesDir() string { return filepath.Join(root, "schedules") }
-
 // --- Init ---
 
 // EnsureDirs creates the standard directory structure.
