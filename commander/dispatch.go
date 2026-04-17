@@ -35,7 +35,15 @@ func (c *Commander) Dispatch(brief, details string) (*operation.Operation, error
 }
 
 // processOperation runs the classify → provision → launch pipeline for an operation.
+// Recovers from panics to prevent BackgroundLoop from crashing.
 func (c *Commander) processOperation(op *operation.Operation) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[dispatch] PANIC in processOperation %s: %v", op.OperationID, r)
+			c.failOperation(op, fmt.Sprintf("panic: %v", r))
+		}
+	}()
+
 	log.Printf("[dispatch] processOperation started: %s", op.OperationID)
 
 	rt, err := runtime.New(c.RuntimeName)

@@ -247,7 +247,10 @@ func ProcessDue(dispatchFn DispatchFunc, processFn ProcessFunc) {
 }
 
 func processImmediate(item *Immediate, processFn ProcessFunc, fl *flock.Flock) {
-	defer fl.Unlock()
+	defer func() {
+		fl.Unlock()
+		os.Remove(lockPath(item.ID))
+	}()
 
 	if err := processFn(item.OperationID); err != nil {
 		log.Printf("[intake] immediate %s: process failed: %v", item.ID, err)
@@ -255,12 +258,9 @@ func processImmediate(item *Immediate, processFn ProcessFunc, fl *flock.Flock) {
 	}
 
 	// Delete the intake file after successful processing
-	p := jsonPath(item.ID)
-	if err := os.Remove(p); err != nil {
+	if err := os.Remove(jsonPath(item.ID)); err != nil {
 		log.Printf("[intake] immediate %s: failed to remove intake file: %v", item.ID, err)
 	}
-	// Best-effort cleanup of lock file
-	os.Remove(lockPath(item.ID))
 }
 
 func processRecurring(item *Recurring, dispatch DispatchFunc, now time.Time, fl *flock.Flock) {
