@@ -68,10 +68,10 @@ func UnclassifiedOperationDir(opID string) string { return OperationDir("_unclas
 // UnclassifiedOperationMDPath returns the OPERATION.md path for an unclassified operation.
 func UnclassifiedOperationMDPath(opID string) string { return OperationMDPath("_unclassified", opID) }
 
-// --- Schedules ---
+// --- Intake ---
 
-// SchedulesDir returns the schedules directory.
-func SchedulesDir() string { return filepath.Join(root, "schedules") }
+// IntakeDir returns the intake queue directory.
+func IntakeDir() string { return filepath.Join(root, "intake") }
 
 // --- Init ---
 

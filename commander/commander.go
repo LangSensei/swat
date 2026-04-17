@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/LangSensei/swat/commander/intake"
 	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
-	"github.com/LangSensei/swat/commander/schedule"
 )
 
 // Commander is the core orchestrator
@@ -53,7 +53,7 @@ func (c *Commander) BackgroundLoop(interval time.Duration) {
 
 	for range ticker.C {
 		c.scan()
-		schedule.CheckDue(c.dispatchForSchedule)
+		intake.ProcessDue(c.dispatchForIntake, c.processExistingOperation)
 	}
 }
 
@@ -103,11 +103,34 @@ func (c *Commander) handleActive(op *operation.Operation) {
 	}
 }
 
-// dispatchForSchedule adapts Dispatch for use as schedule.DispatchFunc.
-func (c *Commander) dispatchForSchedule(brief, details string) (string, error) {
-	op, err := c.Dispatch(brief, details)
-	if err != nil {
+// dispatchForIntake is the callback used by intake.ProcessDue for recurring tasks.
+// It creates a new operation and runs the full pipeline: classify → provision → launch.
+func (c *Commander) dispatchForIntake(brief, details string) (string, error) {
+	now := time.Now().UTC()
+	op := &operation.Operation{
+		OperationID: GenerateOpID(),
+		Brief:       brief,
+		Details:     details,
+		Status:      "queued",
+		Source:      "user",
+		CreatedAt:   now,
+	}
+	if err := operation.Create(op); err != nil {
 		return "", err
 	}
+
+	c.processOperation(op)
 	return op.OperationID, nil
+}
+
+// processExistingOperation is the callback used by intake.ProcessDue for immediate tasks.
+// It loads an existing operation and runs the pipeline on it.
+func (c *Commander) processExistingOperation(operationID string) error {
+	op, err := operation.Find(operationID)
+	if err != nil {
+		return fmt.Errorf("find operation %s: %w", operationID, err)
+	}
+
+	c.processOperation(op)
+	return nil
 }
