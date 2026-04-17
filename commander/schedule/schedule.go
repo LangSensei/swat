@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofrs/flock"
+
 	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
@@ -80,6 +82,13 @@ func Create(brief, details, cronExpr, tz string, immediate bool) (*Schedule, err
 	if err := os.MkdirAll(layout.SchedulesDir(), 0755); err != nil {
 		return nil, err
 	}
+
+	fl := flock.New(lockPath(id))
+	if err := fl.Lock(); err != nil {
+		return nil, fmt.Errorf("acquire lock: %w", err)
+	}
+	defer fl.Unlock()
+
 	return sched, save(sched)
 }
 
@@ -121,6 +130,17 @@ func List() ([]*Schedule, error) {
 // Delete removes a schedule by ID.
 func Delete(id string) error {
 	path := filePath(id)
+	lp := lockPath(id)
+
+	fl := flock.New(lp)
+	if err := fl.Lock(); err != nil {
+		return fmt.Errorf("acquire lock: %w", err)
+	}
+	defer func() {
+		fl.Unlock()
+		os.Remove(lp)
+	}()
+
 	if !platform.FileExists(path) {
 		return fmt.Errorf("schedule %q not found", id)
 	}
@@ -129,8 +149,9 @@ func Delete(id string) error {
 
 // CheckDue finds due schedules and dispatches them via the provided callback.
 func CheckDue(dispatch DispatchFunc) {
-	schedules, err := List()
-	if err != nil || len(schedules) == 0 {
+	dir := layout.SchedulesDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) == 0 {
 		return
 	}
 
@@ -151,42 +172,59 @@ func CheckDue(dispatch DispatchFunc) {
 		}
 	}
 
-	for _, s := range schedules {
-		if !s.Enabled || s.NextRun == nil {
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		if s.NextRun.After(now) {
-			continue
-		}
-		if inFlight[s.ID] {
-			continue
-		}
-
-		sourceTag, err := dispatch(s.Brief, s.Details)
-		if err != nil {
-			continue
-		}
-
-		// Update the dispatched operation's source
-		if op, err := operation.Find(sourceTag); err == nil {
-			op.Source = "schedule/" + s.ID
-			if err := operation.Save(op); err != nil {
-				log.Printf("[schedule] %s: failed to save source update: %v", op.OperationID, err)
-			}
-		}
-
-		loc, _ := time.LoadLocation(s.Timezone)
-		if loc == nil {
-			loc = time.UTC
-		}
-		s.LastRun = &now
-		s.NextRun = NextTime(s.Cron, now, loc)
-		_ = save(s)
+		id := strings.TrimSuffix(e.Name(), ".json")
+		processSchedule(id, dir, now, inFlight, dispatch)
 	}
+}
+
+// processSchedule handles a single schedule entry with defer-based unlock.
+func processSchedule(id, dir string, now time.Time, inFlight map[string]bool, dispatch DispatchFunc) {
+	fl := flock.New(lockPath(id))
+	locked, err := fl.TryLock()
+	if err != nil || !locked {
+		return
+	}
+	defer fl.Unlock()
+
+	s, err := load(filepath.Join(dir, id+".json"))
+	if err != nil {
+		return
+	}
+
+	if !s.Enabled || s.NextRun == nil || s.NextRun.After(now) || inFlight[s.ID] {
+		return
+	}
+
+	sourceTag, err := dispatch(s.Brief, s.Details)
+	if err != nil {
+		return
+	}
+
+	// Update the dispatched operation's source
+	if op, err := operation.Find(sourceTag); err == nil {
+		op.Source = "schedule/" + s.ID
+		_ = operation.Save(op)
+	}
+
+	loc, _ := time.LoadLocation(s.Timezone)
+	if loc == nil {
+		loc = time.UTC
+	}
+	s.LastRun = &now
+	s.NextRun = NextTime(s.Cron, now, loc)
+	_ = save(s)
 }
 
 func filePath(id string) string {
 	return filepath.Join(layout.SchedulesDir(), id+".json")
+}
+
+func lockPath(id string) string {
+	return filepath.Join(layout.SchedulesDir(), id+".json.lock")
 }
 
 func save(s *Schedule) error {
