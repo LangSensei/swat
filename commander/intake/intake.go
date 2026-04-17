@@ -145,18 +145,16 @@ func Delete(id string) error {
 	if err := fl.Lock(); err != nil {
 		return fmt.Errorf("lock %s: %w", id, err)
 	}
-	defer fl.Unlock()
+	defer func() {
+		fl.Unlock()
+		os.Remove(lp)
+	}()
 
 	if _, err := os.Stat(p); os.IsNotExist(err) {
 		return fmt.Errorf("intake entry %q not found", id)
 	}
 
-	if err := os.Remove(p); err != nil {
-		return err
-	}
-	// Best-effort cleanup of lock file
-	os.Remove(lp)
-	return nil
+	return os.Remove(p)
 }
 
 // List returns all intake entries sorted by type (recurring first) then by next_run.
