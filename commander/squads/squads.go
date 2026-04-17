@@ -172,7 +172,48 @@ func Install(squad string) ([]SkillPrereq, error) {
 	return prereqs, nil
 }
 
+// atomicDirReplace downloads remotePath into a temp directory, then atomically
+// swaps it into destDir using rename. If the download fails, destDir is left
+// unchanged. This eliminates the window where destDir is absent during updates.
+func atomicDirReplace(remotePath, destDir string) error {
+	tmpDir := destDir + ".tmp"
+	oldDir := destDir + ".old"
+
+	// Clean up any leftovers from a previously interrupted update.
+	os.RemoveAll(tmpDir)
+	os.RemoveAll(oldDir)
+
+	// Download new version to temp directory.
+	if err := ghDownloadDir(remotePath, tmpDir); err != nil {
+		os.RemoveAll(tmpDir) // clean up on failure
+		return err
+	}
+
+	// Swap: move current → .old, then move .tmp → current.
+	// If destDir doesn't exist yet (first install of a skill during update),
+	// skip the rename-aside step.
+	if platform.DirExists(destDir) {
+		if err := os.Rename(destDir, oldDir); err != nil {
+			os.RemoveAll(tmpDir)
+			return fmt.Errorf("rename old dir: %w", err)
+		}
+	}
+
+	if err := os.Rename(tmpDir, destDir); err != nil {
+		// Attempt to restore the old directory.
+		os.Rename(oldDir, destDir)
+		os.RemoveAll(tmpDir)
+		return fmt.Errorf("rename new dir into place: %w", err)
+	}
+
+	// Clean up the old version (best-effort).
+	os.RemoveAll(oldDir)
+	return nil
+}
+
 // Update re-downloads a squad and its dependencies from the marketplace.
+// It uses an atomic directory swap (download to temp, then rename) so the
+// squad blueprint is never absent from disk during the update.
 func Update(squad string) error {
 	squadDir := layout.BlueprintSquadDir(squad)
 
@@ -180,20 +221,16 @@ func Update(squad string) error {
 		return fmt.Errorf("squad %q is not installed", squad)
 	}
 
-	if err := os.RemoveAll(squadDir); err != nil {
-		return fmt.Errorf("remove old squad %q: %w", squad, err)
-	}
-	if err := ghDownloadDir("squads/"+squad, squadDir); err != nil {
-		return fmt.Errorf("download squad %q: %w", squad, err)
+	if err := atomicDirReplace("squads/"+squad, squadDir); err != nil {
+		return fmt.Errorf("update squad %q: %w", squad, err)
 	}
 
 	allSkills := deps.ResolveSkillDependencies(squad)
 
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(layout.BlueprintSkillsDir(), skill)
-		os.RemoveAll(destSkill)
-		if err := ghDownloadDir("skills/"+skill, destSkill); err != nil {
-			return fmt.Errorf("download skill %q: %w", skill, err)
+		if err := atomicDirReplace("skills/"+skill, destSkill); err != nil {
+			return fmt.Errorf("update skill %q: %w", skill, err)
 		}
 	}
 
