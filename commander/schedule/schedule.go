@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofrs/flock"
+
 	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
@@ -80,6 +82,13 @@ func Create(brief, details, cronExpr, tz string, immediate bool) (*Schedule, err
 	if err := os.MkdirAll(layout.SchedulesDir(), 0755); err != nil {
 		return nil, err
 	}
+
+	fl := flock.New(lockPath(id))
+	if err := fl.Lock(); err != nil {
+		return nil, fmt.Errorf("acquire lock: %w", err)
+	}
+	defer fl.Unlock()
+
 	return sched, save(sched)
 }
 
@@ -121,16 +130,29 @@ func List() ([]*Schedule, error) {
 // Delete removes a schedule by ID.
 func Delete(id string) error {
 	path := filePath(id)
+	lp := lockPath(id)
+
+	fl := flock.New(lp)
+	if err := fl.Lock(); err != nil {
+		return fmt.Errorf("acquire lock: %w", err)
+	}
+
 	if !platform.FileExists(path) {
+		fl.Unlock()
 		return fmt.Errorf("schedule %q not found", id)
 	}
-	return os.Remove(path)
+	err := os.Remove(path)
+	fl.Unlock()
+	// Clean up the lock file after releasing the lock
+	os.Remove(lp)
+	return err
 }
 
 // CheckDue finds due schedules and dispatches them via the provided callback.
 func CheckDue(dispatch DispatchFunc) {
-	schedules, err := List()
-	if err != nil || len(schedules) == 0 {
+	dir := layout.SchedulesDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) == 0 {
 		return
 	}
 
@@ -151,19 +173,34 @@ func CheckDue(dispatch DispatchFunc) {
 		}
 	}
 
-	for _, s := range schedules {
-		if !s.Enabled || s.NextRun == nil {
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		if s.NextRun.After(now) {
+
+		id := strings.TrimSuffix(e.Name(), ".json")
+
+		// Per-file lock: skip this schedule if locked by another process
+		fl := flock.New(lockPath(id))
+		locked, err := fl.TryLock()
+		if err != nil || !locked {
 			continue
 		}
-		if inFlight[s.ID] {
+
+		s, err := load(filepath.Join(dir, e.Name()))
+		if err != nil {
+			fl.Unlock()
+			continue
+		}
+
+		if !s.Enabled || s.NextRun == nil || s.NextRun.After(now) || inFlight[s.ID] {
+			fl.Unlock()
 			continue
 		}
 
 		sourceTag, err := dispatch(s.Brief, s.Details)
 		if err != nil {
+			fl.Unlock()
 			continue
 		}
 
@@ -182,11 +219,16 @@ func CheckDue(dispatch DispatchFunc) {
 		s.LastRun = &now
 		s.NextRun = NextTime(s.Cron, now, loc)
 		_ = save(s)
+		fl.Unlock()
 	}
 }
 
 func filePath(id string) string {
 	return filepath.Join(layout.SchedulesDir(), id+".json")
+}
+
+func lockPath(id string) string {
+	return filepath.Join(layout.SchedulesDir(), id+".json.lock")
 }
 
 func save(s *Schedule) error {
