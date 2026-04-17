@@ -1,4 +1,4 @@
-package schedule
+package intake
 
 import (
 	"fmt"
@@ -11,15 +11,15 @@ type cronSpec struct {
 	minute, hour, dom, month, dow []int
 }
 
-// Validate checks if a cron expression is valid (5-field: min hour dom month dow).
-func Validate(expr string) error {
-	_, err := parse(expr)
+// ValidateCron checks if a cron expression is valid (5-field: min hour dom month dow).
+func ValidateCron(expr string) error {
+	_, err := parseCron(expr)
 	return err
 }
 
-// NextTime finds the next time after `after` that matches the cron spec.
-func NextTime(expr string, after time.Time, loc *time.Location) *time.Time {
-	spec, err := parse(expr)
+// NextCronTime finds the next time after `after` that matches the cron spec.
+func NextCronTime(expr string, after time.Time, loc *time.Location) *time.Time {
+	spec, err := parseCron(expr)
 	if err != nil {
 		return nil
 	}
@@ -54,7 +54,7 @@ func NextTime(expr string, after time.Time, loc *time.Location) *time.Time {
 	return nil
 }
 
-func parse(expr string) (*cronSpec, error) {
+func parseCron(expr string) (*cronSpec, error) {
 	fields := strings.Fields(expr)
 	if len(fields) != 5 {
 		return nil, fmt.Errorf("expected 5 fields, got %d", len(fields))

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/LangSensei/swat/commander"
+	"github.com/LangSensei/swat/commander/intake"
 	"github.com/LangSensei/swat/commander/operation"
-	"github.com/LangSensei/swat/commander/schedule"
 	"github.com/LangSensei/swat/commander/squads"
 )
 
@@ -139,12 +139,12 @@ func (s *Server) handleToolCall(params callToolParams) toolResult {
 		return s.handleCancel(params.Arguments)
 	case "swat_squads":
 		return s.handleSquads(params.Arguments)
-	case "swat_schedule_create":
-		return s.handleScheduleCreate(params.Arguments)
-	case "swat_schedules":
-		return s.handleScheduleList(params.Arguments)
-	case "swat_schedule_delete":
-		return s.handleScheduleDelete(params.Arguments)
+	case "swat_schedule_create", "swat_intake_create":
+		return s.handleIntakeCreate(params.Arguments)
+	case "swat_schedules", "swat_intake_list":
+		return s.handleIntakeList(params.Arguments)
+	case "swat_schedule_delete", "swat_intake_delete":
+		return s.handleIntakeDelete(params.Arguments)
 	case "swat_squad_install":
 		return s.handleInstall(params.Arguments)
 	case "swat_squad_uninstall":
@@ -177,7 +177,7 @@ func (s *Server) handleDispatch(args map[string]interface{}) toolResult {
 
 	data, _ := json.MarshalIndent(op, "", "  ")
 	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("Operation queued. Classify + enrich + launch running async.\n%s", string(data))}},
+		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("Operation queued. Will be processed by background loop.\n%s", string(data))}},
 	}
 }
 
@@ -312,41 +312,52 @@ func (s *Server) handleSquads(args map[string]interface{}) toolResult {
 	}
 }
 
-func (s *Server) handleScheduleCreate(args map[string]interface{}) toolResult {
+func (s *Server) handleIntakeCreate(args map[string]interface{}) toolResult {
 	brief, _ := args["brief"].(string)
 	details, _ := args["details"].(string)
 	cronExpr, _ := args["cron"].(string)
 	tz, _ := args["timezone"].(string)
 	immediate, _ := args["immediate"].(bool)
 
-	sched, err := schedule.Create(brief, details, cronExpr, tz, immediate)
+	item, err := intake.CreateRecurring(brief, details, cronExpr, tz, immediate)
 	if err != nil {
 		return toolResult{
-			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule failed: %v", err)}},
+			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("create failed: %v", err)}},
 			IsError: true,
 		}
 	}
-	data, _ := json.MarshalIndent(sched, "", "  ")
+	data, _ := json.MarshalIndent(item, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}
 }
 
-func (s *Server) handleScheduleList(args map[string]interface{}) toolResult {
-	schedules, err := schedule.List()
+func (s *Server) handleIntakeList(args map[string]interface{}) toolResult {
+	entries, err := intake.List()
 	if err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("list failed: %v", err)}},
 			IsError: true,
 		}
 	}
-	data, _ := json.MarshalIndent(schedules, "", "  ")
+
+	// Format entries for display
+	var items []interface{}
+	for _, e := range entries {
+		if e.Immediate != nil {
+			items = append(items, e.Immediate)
+		} else if e.Recurring != nil {
+			items = append(items, e.Recurring)
+		}
+	}
+
+	data, _ := json.MarshalIndent(items, "", "  ")
 	return toolResult{
 		Content: []contentBlock{{Type: "text", Text: string(data)}},
 	}
 }
 
-func (s *Server) handleScheduleDelete(args map[string]interface{}) toolResult {
+func (s *Server) handleIntakeDelete(args map[string]interface{}) toolResult {
 	id, _ := args["id"].(string)
 	if id == "" {
 		return toolResult{
@@ -354,14 +365,14 @@ func (s *Server) handleScheduleDelete(args map[string]interface{}) toolResult {
 			IsError: true,
 		}
 	}
-	if err := schedule.Delete(id); err != nil {
+	if err := intake.Delete(id); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("delete failed: %v", err)}},
 			IsError: true,
 		}
 	}
 	return toolResult{
-		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("schedule %s deleted", id)}},
+		Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("intake entry %s deleted", id)}},
 	}
 }
 

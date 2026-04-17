@@ -6,12 +6,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/LangSensei/swat/commander/intake"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/pipeline"
 	"github.com/LangSensei/swat/commander/runtime"
 )
 
-// Dispatch creates a new operation and starts async classify+provision+launch.
+// Dispatch creates a new operation and queues it for processing via the intake queue.
 func (c *Commander) Dispatch(brief, details string) (*operation.Operation, error) {
 	now := time.Now().UTC()
 	op := &operation.Operation{
@@ -26,26 +27,14 @@ func (c *Commander) Dispatch(brief, details string) (*operation.Operation, error
 		return nil, err
 	}
 
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("[dispatch] PANIC in processOperation %s: %v", op.OperationID, r)
-				reason := fmt.Sprintf("panic: %v", r)
-				op.Status = "failed"
-				now := time.Now().UTC()
-				op.FailedAt = &now
-				op.FailureReason = &reason
-				if err := operation.Save(op); err != nil {
-					log.Printf("[dispatch] %s: failed to save panic state: %v", op.OperationID, err)
-				}
-			}
-		}()
-		c.processOperation(op)
-	}()
+	if err := intake.CreateImmediate(brief, details, op.OperationID); err != nil {
+		return nil, fmt.Errorf("create intake entry: %w", err)
+	}
 
 	return op, nil
 }
 
+// processOperation runs the classify → provision → launch pipeline for an operation.
 func (c *Commander) processOperation(op *operation.Operation) {
 	log.Printf("[dispatch] processOperation started: %s", op.OperationID)
 

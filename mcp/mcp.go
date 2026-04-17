@@ -75,7 +75,7 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_schedule_create",
+			Name:        "swat_intake_create",
 			Description: "Create a scheduled recurring task. Zero LLM cost.",
 			InputSchema: map[string]interface{}{
 				"type": "object",
@@ -90,20 +90,20 @@ func (s *Server) Tools() []ToolDef {
 			},
 		},
 		{
-			Name:        "swat_schedules",
-			Description: "List all scheduled tasks with next run times",
+			Name:        "swat_intake_list",
+			Description: "List all intake queue entries (recurring schedules and pending immediate tasks)",
 			InputSchema: map[string]interface{}{
 				"type":       "object",
 				"properties": map[string]interface{}{},
 			},
 		},
 		{
-			Name:        "swat_schedule_delete",
-			Description: "Delete a scheduled task",
+			Name:        "swat_intake_delete",
+			Description: "Delete an intake queue entry",
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"id": map[string]interface{}{"type": "string", "description": "Schedule ID"},
+					"id": map[string]interface{}{"type": "string", "description": "Intake entry ID"},
 				},
 				"required": []string{"id"},
 			},
