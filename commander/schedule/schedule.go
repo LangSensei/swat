@@ -136,16 +136,13 @@ func Delete(id string) error {
 	if err := fl.Lock(); err != nil {
 		return fmt.Errorf("acquire lock: %w", err)
 	}
+	defer fl.Unlock()
+	defer os.Remove(lp)
 
 	if !platform.FileExists(path) {
-		fl.Unlock()
 		return fmt.Errorf("schedule %q not found", id)
 	}
-	err := os.Remove(path)
-	fl.Unlock()
-	// Clean up the lock file after releasing the lock
-	os.Remove(lp)
-	return err
+	return os.Remove(path)
 }
 
 // CheckDue finds due schedules and dispatches them via the provided callback.
@@ -177,50 +174,47 @@ func CheckDue(dispatch DispatchFunc) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-
 		id := strings.TrimSuffix(e.Name(), ".json")
-
-		// Per-file lock: skip this schedule if locked by another process
-		fl := flock.New(lockPath(id))
-		locked, err := fl.TryLock()
-		if err != nil || !locked {
-			continue
-		}
-
-		s, err := load(filepath.Join(dir, e.Name()))
-		if err != nil {
-			fl.Unlock()
-			continue
-		}
-
-		if !s.Enabled || s.NextRun == nil || s.NextRun.After(now) || inFlight[s.ID] {
-			fl.Unlock()
-			continue
-		}
-
-		sourceTag, err := dispatch(s.Brief, s.Details)
-		if err != nil {
-			fl.Unlock()
-			continue
-		}
-
-		// Update the dispatched operation's source
-		if op, err := operation.Find(sourceTag); err == nil {
-			op.Source = "schedule/" + s.ID
-			if err := operation.Save(op); err != nil {
-				log.Printf("[schedule] %s: failed to save source update: %v", op.OperationID, err)
-			}
-		}
-
-		loc, _ := time.LoadLocation(s.Timezone)
-		if loc == nil {
-			loc = time.UTC
-		}
-		s.LastRun = &now
-		s.NextRun = NextTime(s.Cron, now, loc)
-		_ = save(s)
-		fl.Unlock()
+		processSchedule(id, dir, now, inFlight, dispatch)
 	}
+}
+
+// processSchedule handles a single schedule entry with defer-based unlock.
+func processSchedule(id, dir string, now time.Time, inFlight map[string]bool, dispatch DispatchFunc) {
+	fl := flock.New(lockPath(id))
+	locked, err := fl.TryLock()
+	if err != nil || !locked {
+		return
+	}
+	defer fl.Unlock()
+
+	s, err := load(filepath.Join(dir, id+".json"))
+	if err != nil {
+		return
+	}
+
+	if !s.Enabled || s.NextRun == nil || s.NextRun.After(now) || inFlight[s.ID] {
+		return
+	}
+
+	sourceTag, err := dispatch(s.Brief, s.Details)
+	if err != nil {
+		return
+	}
+
+	// Update the dispatched operation's source
+	if op, err := operation.Find(sourceTag); err == nil {
+		op.Source = "schedule/" + s.ID
+		_ = operation.Save(op)
+	}
+
+	loc, _ := time.LoadLocation(s.Timezone)
+	if loc == nil {
+		loc = time.UTC
+	}
+	s.LastRun = &now
+	s.NextRun = NextTime(s.Cron, now, loc)
+	_ = save(s)
 }
 
 func filePath(id string) string {
