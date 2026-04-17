@@ -1,6 +1,6 @@
 ---
 name: protocol
-version: "2.0.1"
+version: "2.0.2"
 description: Base operation protocol — boot, execute, complete
 dependencies:
   skills: [debrief]
@@ -87,6 +87,6 @@ Generate `report.html` in the operation root. This is the **user-facing delivera
 - Responsive — readable on mobile and desktop (`<meta name="viewport">`)
 - Result-oriented — the reader wants answers, not a replay of your thought process
 
-### 4. Notify
+### 4. Debrief
 
-Read the debrief skill (`.github/skills/debrief/SKILL.md`) and follow its instructions to notify the user of results.
+Read the debrief skill (`.github/skills/debrief/SKILL.md`) and follow its instructions.
