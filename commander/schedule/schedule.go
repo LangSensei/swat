@@ -136,8 +136,10 @@ func Delete(id string) error {
 	if err := fl.Lock(); err != nil {
 		return fmt.Errorf("acquire lock: %w", err)
 	}
-	defer fl.Unlock()
-	defer os.Remove(lp)
+	defer func() {
+		fl.Unlock()
+		os.Remove(lp)
+	}()
 
 	if !platform.FileExists(path) {
 		return fmt.Errorf("schedule %q not found", id)
