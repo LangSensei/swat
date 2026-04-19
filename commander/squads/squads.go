@@ -214,15 +214,15 @@ func atomicDirReplace(remotePath, destDir string) error {
 // Update re-downloads a squad and its dependencies from the marketplace.
 // It uses an atomic directory swap (download to temp, then rename) so the
 // squad blueprint is never absent from disk during the update.
-func Update(squad string) error {
+func Update(squad string) ([]SkillPrereq, error) {
 	squadDir := layout.BlueprintSquadDir(squad)
 
 	if !platform.FileExists(filepath.Join(squadDir, "MANIFEST.md")) {
-		return fmt.Errorf("squad %q is not installed", squad)
+		return nil, fmt.Errorf("squad %q is not installed", squad)
 	}
 
 	if err := atomicDirReplace("squads/"+squad, squadDir); err != nil {
-		return fmt.Errorf("update squad %q: %w", squad, err)
+		return nil, fmt.Errorf("update squad %q: %w", squad, err)
 	}
 
 	allSkills := deps.ResolveSkillDependencies(squad)
@@ -230,7 +230,7 @@ func Update(squad string) error {
 	for _, skill := range allSkills {
 		destSkill := filepath.Join(layout.BlueprintSkillsDir(), skill)
 		if err := atomicDirReplace("skills/"+skill, destSkill); err != nil {
-			return fmt.Errorf("update skill %q: %w", skill, err)
+			return nil, fmt.Errorf("update skill %q: %w", skill, err)
 		}
 	}
 
@@ -240,15 +240,16 @@ func Update(squad string) error {
 		destMCP := filepath.Join(layout.BlueprintMCPsDir(), mcp+".json")
 		data, err := ghGetFile("mcps/" + mcp + ".json")
 		if err != nil {
-			return fmt.Errorf("download MCP %q: %w", mcp, err)
+			return nil, fmt.Errorf("download MCP %q: %w", mcp, err)
 		}
 		os.MkdirAll(layout.BlueprintMCPsDir(), 0755)
 		if err := os.WriteFile(destMCP, data, 0644); err != nil {
-			return fmt.Errorf("write MCP %q: %w", mcp, err)
+			return nil, fmt.Errorf("write MCP %q: %w", mcp, err)
 		}
 	}
 
-	return nil
+	prereqs := collectPrereqs(allSkills)
+	return prereqs, nil
 }
 
 // Uninstall removes a squad blueprint and cleans up orphaned dependencies.
