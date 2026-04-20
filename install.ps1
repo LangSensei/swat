@@ -39,11 +39,6 @@ function Check-Prereqs {
         Err "Missing prerequisites: $($missing -join ', ')"
         exit 1
     }
-
-    if (-not (Get-Command copilot -ErrorAction SilentlyContinue)) {
-        Warn "GitHub Copilot CLI not found. Required for running squads."
-        Info "  npm install -g @github/copilot"
-    }
 }
 
 # --- Download & Extract ---
