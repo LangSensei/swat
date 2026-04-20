@@ -16,7 +16,6 @@ type Operation struct {
 	Squad         string      `json:"squad,omitempty"`
 	Status        string      `json:"status"`
 	PID           int         `json:"pid,omitempty"`
-	Source        string      `json:"source"`
 	CreatedAt     time.Time   `json:"created_at"`
 	DispatchedAt  *time.Time  `json:"dispatched_at,omitempty"`
 	CompletedAt   *time.Time  `json:"completed_at,omitempty"`
@@ -70,7 +69,6 @@ func Save(op *Operation) error {
 	patches := map[string]string{
 		"operation_id": op.OperationID,
 		"squad":        op.Squad,
-		"source":       op.Source,
 		"status":       op.Status,
 		"created_at":   op.CreatedAt.Format(time.RFC3339),
 	}

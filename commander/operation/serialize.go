@@ -24,8 +24,6 @@ func buildOperationFile(op *Operation) (string, error) {
 	// Commander fields
 	result = strings.ReplaceAll(result, "{OPERATION_ID}", op.OperationID)
 	result = strings.ReplaceAll(result, "{SQUAD}", op.Squad)
-	result = strings.ReplaceAll(result, "{SOURCE}", op.Source)
-
 	if op.PID > 0 {
 		result = strings.ReplaceAll(result, "{PID}", fmt.Sprintf("%d", op.PID))
 	} else {
@@ -101,8 +99,6 @@ func parseOperationMD(content string) (*Operation, error) {
 			op.Squad = val
 		case "status":
 			op.Status = val
-		case "source":
-			op.Source = val
 		case "pid":
 			fmt.Sscanf(val, "%d", &op.PID)
 		case "created_at":

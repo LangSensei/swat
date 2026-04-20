@@ -2,7 +2,6 @@
 # ── COMMANDER (written at dispatch, do not modify) ──
 # format: YYYYMMDD-8hex
 operation_id: {OPERATION_ID}
-source: {SOURCE}
 pid: {PID}
 created_at: {CREATED_AT}
 dispatched_at: {DISPATCHED_AT}

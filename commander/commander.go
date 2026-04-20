@@ -112,7 +112,6 @@ func (c *Commander) dispatchForIntake(brief, details string) (string, error) {
 		Brief:       brief,
 		Details:     details,
 		Status:      "queued",
-		Source:      "user",
 		CreatedAt:   now,
 	}
 	if err := operation.Create(op); err != nil {

@@ -10,7 +10,6 @@ func TestParseOperationMD_BriefExtraction(t *testing.T) {
 		"operation_id: 20260415-test1234\n" +
 		"status: active\n" +
 		"squad: test-squad\n" +
-		"source: user\n" +
 		"created_at: 2026-04-15T06:00:00Z\n" +
 		"---\n" +
 		"\n" +
