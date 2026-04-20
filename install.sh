@@ -55,11 +55,6 @@ check_prereqs() {
     if [[ ${#missing[@]} -gt 0 ]]; then
         die "Missing prerequisites: ${missing[*]}"
     fi
-
-    if ! command -v copilot >/dev/null 2>&1; then
-        info "Warning: GitHub Copilot CLI not found. Required for running squads."
-        info "  npm install -g @github/copilot"
-    fi
 }
 
 # --- Download & Extract ---
