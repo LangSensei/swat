@@ -20,7 +20,6 @@ func (c *Commander) Dispatch(brief, details string) (*operation.Operation, error
 		Brief:       brief,
 		Details:     details,
 		Status:      "queued",
-		Source:      "user",
 		CreatedAt:   now,
 	}
 	if err := operation.Create(op); err != nil {
