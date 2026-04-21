@@ -14,7 +14,7 @@ import (
 	"github.com/LangSensei/swat/commander/squads"
 )
 
-// Classify runs the LLM-based classify+enrich step on an unclassified operation.
+// Classify runs the LLM-based operation classifier on an unclassified operation.
 func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notify.Notifier) (*operation.Operation, string, error) {
 	unclassifiedDir := layout.UnclassifiedOperationDir(op.OperationID)
 
@@ -23,16 +23,34 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 	}
 
 	prompt := fmt.Sprintf(
-		"You are a task classifier and enricher. "+
-			"Read OPERATION.md in the current directory for the task. "+
-			"Read all MANIFEST.md files under %s (skip _framework) to find available squads. "+
-			"Read past operations under %s for historical context. "+
-			"Your job: "+
-			"1. Choose the best squad and update the 'squad' field in OPERATION.md frontmatter. "+
-			"2. If you find relevant historical operations, add them to the 'references' field as [{type: \"operation\", value: \"path\"}]. "+
-			"3. Write enrichment to the `### Context` section (under ## Assignment). Keep the ## Assignment text intact. Write historical context, related operation findings, and key metrics into ### Context, replacing the `[CLASSIFY: ...]` placeholder. "+
-			"If no squad is a good fit for the task, leave the squad field empty. "+
-			"Do NOT modify any other frontmatter fields besides 'squad' and 'references'.",
+		"You are an Operation Classifier. Your job is to route an operation to the right squad and enrich it with relevant context. "+
+			"## Step 1: Read the operation "+
+			"Read OPERATION.md for the brief (H1 title) and details (## Assignment section). "+
+			"## Step 2: Read available squads "+
+			"Read each MANIFEST.md under %s (skip _framework). "+
+			"For each squad, note: name, domain, description, skills. "+
+			"## Step 3: Match "+
+			"Choose the squad whose domain and description best matches the operation. "+
+			"Decision criteria (in priority order): "+
+			"1. Domain match — operation subject falls within squad's stated domain "+
+			"2. Skill match — operation requires skills the squad has "+
+			"3. Specificity — prefer more specific squad over general one "+
+			"If two squads tie, choose the one with more relevant historical operations. "+
+			"If no squad fits, leave squad field empty. "+
+			"## Step 4: Find references "+
+			"Scan OPERATION.md files from the matched squad's operations/ directory (%s). "+
+			"- First pass: read the frontmatter (status, summary) and the H1 title (brief) of all operations "+
+			"- Second pass: for the 5-10 most relevant completed operations, read full content "+
+			"- Add the most valuable ones as references (up to 10) "+
+			"## Step 5: Enrich context "+
+			"In the ### Context section, write: "+
+			"- Why this squad was chosen (1 sentence) "+
+			"- Key findings from referenced operations that are relevant to THIS operation "+
+			"- Any data points or metrics the operator should know before starting "+
+			"## Output "+
+			"Update OPERATION.md frontmatter: squad and references fields only. "+
+			"Replace the [CLASSIFY: ...] placeholder with your enrichment. "+
+			"Do NOT modify any other frontmatter fields.",
 		layout.BlueprintSquadsDir(),
 		layout.SquadsDir(),
 	)
@@ -49,14 +67,14 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 
 	if err := cmd.Start(); err != nil {
 		logFile.Close()
-		return nil, "", fmt.Errorf("start classify agent: %v", err)
+		return nil, "", fmt.Errorf("start operation classifier: %v", err)
 	}
 	if err := cmd.Wait(); err != nil {
 		logFile.Close()
-		log.Printf("[classify] %s: classify agent exited with error: %v", op.OperationID, err)
+		log.Printf("[classify] %s: operation classifier exited with error: %v", op.OperationID, err)
 	} else {
 		logFile.Close()
-		log.Printf("[classify] %s: classify agent completed successfully", op.OperationID)
+		log.Printf("[classify] %s: operation classifier completed successfully", op.OperationID)
 	}
 
 	reloaded, err := operation.Load("_unclassified", op.OperationID)
