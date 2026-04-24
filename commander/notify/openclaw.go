@@ -1,6 +1,7 @@
 package notify
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -9,7 +10,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/LangSensei/swat/commander/layout"
 )
 
 // OpenClawNotifier sends notifications via the OpenClaw Gateway HTTP API.
@@ -20,28 +24,17 @@ type OpenClawNotifier struct {
 	channel string
 }
 
-// openclawConfig holds values extracted from ~/.openclaw/openclaw.json.
-type openclawConfig struct {
-	Token   string
-	Port    string
-	Target  string
-	Channel string
-}
-
-// readOpenClawConfig reads ~/.openclaw/openclaw.json and extracts gateway and
-// channel configuration. Returns a zero-value config (no error) if the file
-// does not exist or cannot be parsed.
-func readOpenClawConfig() openclawConfig {
-	var cfg openclawConfig
-
+// readOpenClawConfig reads ~/.openclaw/openclaw.json and extracts gateway
+// port and auth token. Returns empty strings if the file is missing or invalid.
+func readOpenClawConfig() (port, token string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return cfg
+		return "", ""
 	}
 
 	data, err := os.ReadFile(filepath.Join(home, ".openclaw", "openclaw.json"))
 	if err != nil {
-		return cfg
+		return "", ""
 	}
 
 	var raw struct {
@@ -51,65 +44,79 @@ func readOpenClawConfig() openclawConfig {
 				Token string `json:"token"`
 			} `json:"auth"`
 		} `json:"gateway"`
-		Channels map[string]struct {
-			AllowFrom []string `json:"allowFrom"`
-		} `json:"channels"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return cfg
+		return "", ""
 	}
 
-	cfg.Token = raw.Gateway.Auth.Token
-	if p := raw.Gateway.Port.String(); p != "" {
-		cfg.Port = p
+	return raw.Gateway.Port.String(), raw.Gateway.Auth.Token
+}
+
+// readDotEnv reads ~/.swat/.env and returns the values of the requested keys.
+// The file format is KEY=VALUE per line; blank lines and # comments are skipped.
+func readDotEnv(keys ...string) map[string]string {
+	result := make(map[string]string, len(keys))
+
+	f, err := os.Open(filepath.Join(layout.Root(), ".env"))
+	if err != nil {
+		return result
+	}
+	defer f.Close()
+
+	want := make(map[string]struct{}, len(keys))
+	for _, k := range keys {
+		want[k] = struct{}{}
 	}
 
-	// Use the first channel that has an allowFrom entry as target and channel name.
-	for name, ch := range raw.Channels {
-		if len(ch.AllowFrom) > 0 {
-			cfg.Target = ch.AllowFrom[0]
-			cfg.Channel = name
-			break
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if _, ok := want[key]; ok {
+			result[key] = value
 		}
 	}
 
-	return cfg
+	return result
 }
 
-// newOpenClawNotifier builds config from ~/.openclaw/openclaw.json first, then
-// lets env vars override any values. Errors if token, target, or port is empty.
+// newOpenClawNotifier builds an OpenClawNotifier from two sources:
+//   - port + token from ~/.openclaw/openclaw.json
+//   - target + channel from ~/.swat/.env (OPENCLAW_NOTIFY_TARGET, OPENCLAW_NOTIFY_CHANNEL)
+//
+// Each value has exactly one source. Returns an error if any is missing.
 func newOpenClawNotifier() (*OpenClawNotifier, error) {
-	cfg := readOpenClawConfig()
+	port, token := readOpenClawConfig()
+	env := readDotEnv("OPENCLAW_NOTIFY_TARGET", "OPENCLAW_NOTIFY_CHANNEL")
+	target := env["OPENCLAW_NOTIFY_TARGET"]
+	channel := env["OPENCLAW_NOTIFY_CHANNEL"]
 
-	// Env vars override config file values.
-	if v := os.Getenv("OPENCLAW_GATEWAY_TOKEN"); v != "" {
-		cfg.Token = v
+	if port == "" {
+		return nil, fmt.Errorf("openclaw: gateway port is required (configure gateway.port in ~/.openclaw/openclaw.json)")
 	}
-	if v := os.Getenv("OPENCLAW_GATEWAY_PORT"); v != "" {
-		cfg.Port = v
+	if token == "" {
+		return nil, fmt.Errorf("openclaw: gateway token is required (configure gateway.auth.token in ~/.openclaw/openclaw.json)")
 	}
-	if v := os.Getenv("OPENCLAW_NOTIFY_TARGET"); v != "" {
-		cfg.Target = v
+	if target == "" {
+		return nil, fmt.Errorf("openclaw: notify target is required (set OPENCLAW_NOTIFY_TARGET in ~/.swat/.env)")
 	}
-	if v := os.Getenv("OPENCLAW_NOTIFY_CHANNEL"); v != "" {
-		cfg.Channel = v
-	}
-
-	if cfg.Token == "" {
-		return nil, fmt.Errorf("openclaw: gateway token is required (set in ~/.openclaw/openclaw.json or OPENCLAW_GATEWAY_TOKEN)")
-	}
-	if cfg.Target == "" {
-		return nil, fmt.Errorf("openclaw: notify target is required (set in ~/.openclaw/openclaw.json or OPENCLAW_NOTIFY_TARGET)")
-	}
-	if cfg.Port == "" {
-		return nil, fmt.Errorf("openclaw: gateway port is required (set in ~/.openclaw/openclaw.json or OPENCLAW_GATEWAY_PORT)")
+	if channel == "" {
+		return nil, fmt.Errorf("openclaw: notify channel is required (set OPENCLAW_NOTIFY_CHANNEL in ~/.swat/.env)")
 	}
 
 	return &OpenClawNotifier{
-		port:    cfg.Port,
-		token:   cfg.Token,
-		target:  cfg.Target,
-		channel: cfg.Channel,
+		port:    port,
+		token:   token,
+		target:  target,
+		channel: channel,
 	}, nil
 }
 
