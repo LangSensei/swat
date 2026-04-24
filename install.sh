@@ -55,6 +55,11 @@ check_prereqs() {
     if [[ ${#missing[@]} -gt 0 ]]; then
         die "Missing prerequisites: ${missing[*]}"
     fi
+
+    if ! command -v copilot >/dev/null 2>&1; then
+        info "Warning: GitHub Copilot CLI not found. Required for running squads."
+        info "  npm install -g @github/copilot"
+    fi
 }
 
 # --- Download & Extract ---
@@ -187,23 +192,9 @@ main() {
     echo ""
     echo "  Options (add to args):"
     echo "     --runtime <name>   Agent runtime: copilot (default), gemini"
-    echo "     --notify <target>  Notifications: desktop (default), openclaw"
+    echo "     --notify <backend> Notifications: desktop (default), openclaw"
     echo ""
-    echo "  2. For OpenClaw notifications, configure ~/.swat/.env:"
-    echo "     OPENCLAW_NOTIFY_TARGET=<your_chat_id>"
-    echo "     OPENCLAW_NOTIFY_CHANNEL=<telegram|discord|signal>"
-    echo ""
-    echo "     How to find your target ID:"
-    echo "       Telegram: use the allowFrom value from ~/.openclaw/openclaw.json"
-    echo "       Discord: your DM channel ID (enable Developer Mode, right-click channel → Copy ID)"
-    echo ""
-    echo "     Gateway settings (port and token) are read from ~/.openclaw/openclaw.json"
-    echo "     automatically. Override with OPENCLAW_GATEWAY_PORT / OPENCLAW_GATEWAY_TOKEN"
-    echo "     in ~/.swat/.env if needed."
-    echo ""
-    echo "     Test with: swat_notify after configuration."
-    echo ""
-    echo "  3. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
+    echo "  2. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
     echo ""
 }
 

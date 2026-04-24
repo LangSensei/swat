@@ -39,6 +39,11 @@ function Check-Prereqs {
         Err "Missing prerequisites: $($missing -join ', ')"
         exit 1
     }
+
+    if (-not (Get-Command copilot -ErrorAction SilentlyContinue)) {
+        Warn "GitHub Copilot CLI not found. Required for running squads."
+        Info "  npm install -g @github/copilot"
+    }
 }
 
 # --- Download & Extract ---
@@ -146,21 +151,7 @@ Write-Host "     {`"mcpServers`":{`"swat`":{`"command`":`"swat`",`"args`":[]}}}"
 Write-Host ""
 Write-Host "  Options (add to args):"
 Write-Host "     --runtime <name>   Agent runtime: copilot (default), gemini"
-Write-Host "     --notify <target>  Notifications: desktop (default), openclaw"
+Write-Host "     --notify <backend> Notifications: desktop (default), openclaw"
 Write-Host ""
-Write-Host "  2. For OpenClaw notifications, configure ~/.swat/.env:"
-Write-Host "     OPENCLAW_NOTIFY_TARGET=<your_chat_id>"
-Write-Host "     OPENCLAW_NOTIFY_CHANNEL=<telegram|discord|signal>"
-Write-Host ""
-Write-Host "     How to find your target ID:"
-Write-Host "       Telegram: use the allowFrom value from ~/.openclaw/openclaw.json"
-Write-Host "       Discord: your DM channel ID (enable Developer Mode, right-click channel -> Copy ID)"
-Write-Host ""
-Write-Host "     Gateway settings (port and token) are read from ~/.openclaw/openclaw.json"
-Write-Host "     automatically. Override with OPENCLAW_GATEWAY_PORT / OPENCLAW_GATEWAY_TOKEN"
-Write-Host "     in ~/.swat/.env if needed."
-Write-Host ""
-Write-Host "     Test with: swat_notify after configuration."
-Write-Host ""
-Write-Host "  3. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
+Write-Host "  2. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
 Write-Host ""

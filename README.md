@@ -29,35 +29,6 @@ If you use [OpenClaw](https://github.com/openclaw/openclaw), install the bridge 
 # See https://github.com/LangSensei/swat-openclaw
 ```
 
-#### OpenClaw Notification Configuration
-
-To receive notifications via OpenClaw, configure `~/.swat/.env` with your notification target:
-
-```env
-# ~/.swat/.env — OpenClaw notification config
-OPENCLAW_NOTIFY_TARGET=<your_chat_id>
-OPENCLAW_NOTIFY_CHANNEL=<telegram|discord|signal>
-```
-
-**How to find your target ID:**
-
-| Channel | Target ID |
-|---------|-----------|
-| **Telegram** | Your Telegram chat ID — find it in the `allowFrom` array under your channel in `~/.openclaw/openclaw.json` |
-| **Discord** | Your DM channel ID — enable Developer Mode in Discord settings, then right-click the channel and select "Copy ID" |
-| **Signal** | Your Signal phone number or group ID as configured in OpenClaw |
-
-**Gateway settings** (`port` and `auth.token`) are read automatically from `~/.openclaw/openclaw.json`. To override, add these to `~/.swat/.env`:
-
-```env
-OPENCLAW_GATEWAY_PORT=3100
-OPENCLAW_GATEWAY_TOKEN=your_token_here
-```
-
-**Priority order:** Real environment variables > `~/.swat/.env` > `~/.openclaw/openclaw.json` (gateway port and token only).
-
-After configuration, test with `swat_notify` to verify notifications are working.
-
 ## 🗑️ Uninstallation
 
 ### Linux / macOS
@@ -105,10 +76,10 @@ SWAT exposes 12 MCP tools. Configure your agent to connect:
 - `swat_squad_uninstall` — Uninstall a squad
 - `swat_squad_update` — Update a squad to the latest marketplace version
 
-#### Intake
-- `swat_intake_create` — Create a recurring task (zero LLM cost)
-- `swat_intake_list` — List all intake queue entries
-- `swat_intake_delete` — Delete an intake entry
+#### Schedule
+- `swat_schedule_create` — Create a recurring task (zero LLM cost)
+- `swat_schedules` — List all schedules
+- `swat_schedule_delete` — Delete a schedule
 
 #### Notification
 - `swat_notify` — Send a notification to the user
@@ -155,13 +126,13 @@ Set the runtime with `--runtime <name>` (e.g. `swat --runtime gemini`).
 
 > **Skills vs Hooks:** Skills are runtime-agnostic (shared across all runtimes). Hooks are runtime-specific and live under `hooks/copilot/`, `hooks/gemini/`, etc. in each skill's blueprint.
 
-### Intake Queue
+### Scheduler
 
-Unified task entry point — all tasks (immediate dispatches and recurring schedules) flow through `~/.swat/intake/`:
-- Immediate tasks: created by `swat_dispatch`, processed by background loop, deleted after completion
-- Recurring tasks: standard 5-field cron expressions with timezone support
+Built-in Go cron scheduler for recurring tasks — zero LLM cost:
+- Standard 5-field cron expressions with timezone support
 - `immediate` flag for first-run-now behavior
-- Per-file locking for concurrent safety
+- In-flight protection (skips if previous run still active)
+- Startup catch-up (checks due schedules on boot)
 
 ## 📂 Directory Structure
 
@@ -192,7 +163,7 @@ Unified task entry point — all tasks (immediate dispatches and recurring sched
 │                   ├── hooks/     # Skill hooks (runtime-specific)
 │                   └── skills/    # Skill content
 │
-└── intake/                        # Intake queue (JSON)
+└── schedules/                     # Schedule definitions (JSON)
     └── <id>.json
 ```
 
