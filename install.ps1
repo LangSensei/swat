@@ -39,11 +39,6 @@ function Check-Prereqs {
         Err "Missing prerequisites: $($missing -join ', ')"
         exit 1
     }
-
-    if (-not (Get-Command copilot -ErrorAction SilentlyContinue)) {
-        Warn "GitHub Copilot CLI not found. Required for running squads."
-        Info "  npm install -g @github/copilot"
-    }
 }
 
 # --- Download & Extract ---
@@ -151,7 +146,7 @@ Write-Host "     {`"mcpServers`":{`"swat`":{`"command`":`"swat`",`"args`":[]}}}"
 Write-Host ""
 Write-Host "  Options (add to args):"
 Write-Host "     --runtime <name>   Agent runtime: copilot (default), gemini"
-Write-Host "     --notify <backend> Notifications: desktop (default), openclaw"
+Write-Host "     --notify <target>  Notifications: desktop (default), openclaw"
 Write-Host ""
 Write-Host "  2. For OpenClaw integration: https://github.com/LangSensei/swat-openclaw"
 Write-Host ""
