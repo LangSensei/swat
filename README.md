@@ -29,6 +29,35 @@ If you use [OpenClaw](https://github.com/openclaw/openclaw), install the bridge 
 # See https://github.com/LangSensei/swat-openclaw
 ```
 
+#### OpenClaw Notification Configuration
+
+To receive notifications via OpenClaw, configure `~/.swat/.env` with your notification target:
+
+```env
+# ~/.swat/.env — OpenClaw notification config
+OPENCLAW_NOTIFY_TARGET=<your_chat_id>
+OPENCLAW_NOTIFY_CHANNEL=<telegram|discord|signal>
+```
+
+**How to find your target ID:**
+
+| Channel | Target ID |
+|---------|-----------|
+| **Telegram** | Your Telegram chat ID — find it in the `allowFrom` array under your channel in `~/.openclaw/openclaw.json` |
+| **Discord** | Your DM channel ID — enable Developer Mode in Discord settings, then right-click the channel and select "Copy ID" |
+| **Signal** | Your Signal phone number or group ID as configured in OpenClaw |
+
+**Gateway settings** (`port` and `auth.token`) are read automatically from `~/.openclaw/openclaw.json`. To override, add these to `~/.swat/.env`:
+
+```env
+OPENCLAW_GATEWAY_PORT=3100
+OPENCLAW_GATEWAY_TOKEN=your_token_here
+```
+
+**Priority order:** Real environment variables > `~/.swat/.env` > `~/.openclaw/openclaw.json` (gateway port and token only).
+
+After configuration, test with `swat_notify` to verify notifications are working.
+
 ## 🗑️ Uninstallation
 
 ### Linux / macOS

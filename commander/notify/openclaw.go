@@ -1,6 +1,7 @@
 package notify
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -28,9 +30,44 @@ type openclawConfig struct {
 	Channel string
 }
 
-// readOpenClawConfig reads ~/.openclaw/openclaw.json and extracts gateway and
-// channel configuration. Returns a zero-value config (no error) if the file
-// does not exist or cannot be parsed.
+// loadDotEnv reads ~/.swat/.env and sets values via os.Setenv as fallback.
+// Real environment variables take precedence — only keys not already set are
+// applied. The file format is KEY=VALUE per line; blank lines and lines
+// starting with # are skipped.
+func loadDotEnv() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	f, err := os.Open(filepath.Join(home, ".swat", ".env"))
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		// Real env vars take precedence — only set if not already present.
+		if os.Getenv(key) == "" {
+			os.Setenv(key, value)
+		}
+	}
+}
+
+// readOpenClawConfig reads ~/.openclaw/openclaw.json and extracts gateway
+// configuration (port and auth token). Returns a zero-value config (no error)
+// if the file does not exist or cannot be parsed.
 func readOpenClawConfig() openclawConfig {
 	var cfg openclawConfig
 
@@ -51,9 +88,6 @@ func readOpenClawConfig() openclawConfig {
 				Token string `json:"token"`
 			} `json:"auth"`
 		} `json:"gateway"`
-		Channels map[string]struct {
-			AllowFrom []string `json:"allowFrom"`
-		} `json:"channels"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return cfg
@@ -64,21 +98,15 @@ func readOpenClawConfig() openclawConfig {
 		cfg.Port = p
 	}
 
-	// Use the first channel that has an allowFrom entry as target and channel name.
-	for name, ch := range raw.Channels {
-		if len(ch.AllowFrom) > 0 {
-			cfg.Target = ch.AllowFrom[0]
-			cfg.Channel = name
-			break
-		}
-	}
-
 	return cfg
 }
 
-// newOpenClawNotifier builds config from ~/.openclaw/openclaw.json first, then
-// lets env vars override any values. Errors if token, target, or port is empty.
+// newOpenClawNotifier loads ~/.swat/.env as fallback, reads gateway config from
+// ~/.openclaw/openclaw.json, then lets env vars override any values.
+// Errors if any of the 4 required values (port, token, target, channel) is empty.
 func newOpenClawNotifier() (*OpenClawNotifier, error) {
+	loadDotEnv()
+
 	cfg := readOpenClawConfig()
 
 	// Env vars override config file values.
@@ -96,13 +124,16 @@ func newOpenClawNotifier() (*OpenClawNotifier, error) {
 	}
 
 	if cfg.Token == "" {
-		return nil, fmt.Errorf("openclaw: gateway token is required (set in ~/.openclaw/openclaw.json or OPENCLAW_GATEWAY_TOKEN)")
-	}
-	if cfg.Target == "" {
-		return nil, fmt.Errorf("openclaw: notify target is required (set in ~/.openclaw/openclaw.json or OPENCLAW_NOTIFY_TARGET)")
+		return nil, fmt.Errorf("openclaw: gateway token is required (set OPENCLAW_GATEWAY_TOKEN in ~/.swat/.env or as env var, or configure gateway.auth.token in ~/.openclaw/openclaw.json)")
 	}
 	if cfg.Port == "" {
-		return nil, fmt.Errorf("openclaw: gateway port is required (set in ~/.openclaw/openclaw.json or OPENCLAW_GATEWAY_PORT)")
+		return nil, fmt.Errorf("openclaw: gateway port is required (set OPENCLAW_GATEWAY_PORT in ~/.swat/.env or as env var, or configure gateway.port in ~/.openclaw/openclaw.json)")
+	}
+	if cfg.Target == "" {
+		return nil, fmt.Errorf("openclaw: notify target is required (set OPENCLAW_NOTIFY_TARGET in ~/.swat/.env — e.g. your Telegram chat ID or Discord DM channel ID)")
+	}
+	if cfg.Channel == "" {
+		return nil, fmt.Errorf("openclaw: notify channel is required (set OPENCLAW_NOTIFY_CHANNEL in ~/.swat/.env — e.g. telegram, discord, signal)")
 	}
 
 	return &OpenClawNotifier{
