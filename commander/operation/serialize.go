@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LangSensei/swat/commander/deps"
 	"github.com/LangSensei/swat/commander/layout"
+	"gopkg.in/yaml.v3"
 )
 
 // buildOperationFile reads blueprints/OPERATION.md as a template and replaces
@@ -83,48 +83,19 @@ func formatOptionalStr(s *string) string {
 }
 
 // parseOperationMD parses an OPERATION.md file into an Operation struct.
+// Frontmatter is parsed with yaml.v3; body (Brief/Details) is extracted with string logic.
 func parseOperationMD(content string) (*Operation, error) {
-	fm, body, err := deps.ParseFrontmatter(content)
+	fmStr, body, err := splitFrontmatter(content)
 	if err != nil {
 		return nil, err
 	}
-	body = strings.TrimLeft(body, "\n") // skip newlines after closing ---
 
 	op := &Operation{}
-	for key, val := range fm {
-		switch key {
-		case "operation_id":
-			op.OperationID = val
-		case "squad":
-			op.Squad = val
-		case "status":
-			op.Status = val
-		case "pid":
-			fmt.Sscanf(val, "%d", &op.PID)
-		case "created_at":
-			if t, err := time.Parse(time.RFC3339, val); err == nil {
-				op.CreatedAt = t
-			}
-		case "dispatched_at":
-			if t, err := time.Parse(time.RFC3339, val); err == nil {
-				op.DispatchedAt = &t
-			}
-		case "completed_at":
-			if t, err := time.Parse(time.RFC3339, val); err == nil {
-				op.CompletedAt = &t
-			}
-		case "failed_at":
-			if t, err := time.Parse(time.RFC3339, val); err == nil {
-				op.FailedAt = &t
-			}
-		case "failure_reason":
-			if val != "" {
-				op.FailureReason = &val
-			}
-		case "summary":
-			op.Summary = val
-		}
+	if err := yaml.Unmarshal([]byte(fmStr), op); err != nil {
+		return nil, fmt.Errorf("unmarshal frontmatter: %w", err)
 	}
+
+	body = strings.TrimLeft(body, "\n")
 
 	// Parse brief from body: first H1 title
 	if idx := strings.Index(body, "\n"); idx > 0 {
@@ -139,6 +110,20 @@ func parseOperationMD(content string) (*Operation, error) {
 		return nil, fmt.Errorf("missing operation_id in frontmatter")
 	}
 	return op, nil
+}
+
+// splitFrontmatter extracts the raw YAML frontmatter string and body from markdown content.
+func splitFrontmatter(content string) (string, string, error) {
+	if !strings.HasPrefix(content, "---") {
+		return "", "", fmt.Errorf("missing frontmatter")
+	}
+	end := strings.Index(content[3:], "\n---")
+	if end < 0 {
+		return "", "", fmt.Errorf("unterminated frontmatter")
+	}
+	fm := content[4 : end+3]
+	body := content[end+7:]
+	return fm, body, nil
 }
 
 // extractBodySection extracts the content under a ## heading.
