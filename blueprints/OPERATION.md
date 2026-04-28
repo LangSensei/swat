@@ -2,23 +2,23 @@
 # ── COMMANDER (written at dispatch, do not modify) ──
 # format: YYYYMMDD-8hex
 operation_id: {OPERATION_ID}
-pid:
+pid: {PID}
 created_at: {CREATED_AT}
-dispatched_at:
-failed_at:
-failure_reason:
+dispatched_at: {DISPATCHED_AT}
+failed_at: {FAILED_AT}
+failure_reason: {FAILURE_REASON}
 
 # ── CLASSIFY (written by LLM at classify, do not modify) ──
-squad:
+squad: {SQUAD}
 # e.g., [{type: "operation", value: "../20260309-xxxx/"}]
-references: []
+references: {REFERENCES}
 
 # ── OPERATOR (fill during execution) ──
 # queued → active → completed / failed
-status: queued
+status: {STATUS}
 # 2-3 sentence summary of outcome
-summary:
-completed_at:
+summary: {SUMMARY}
+completed_at: {COMPLETED_AT}
 ---
 
 # {BRIEF}
