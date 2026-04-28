@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
-	"path/filepath"
 	"time"
 
 	"github.com/LangSensei/swat/commander/intake"
@@ -76,14 +75,14 @@ func (c *Commander) scan() {
 	for _, op := range ops {
 		switch op.Status {
 		case "queued":
-			c.withLock(op, layout.UnclassifiedOperationDir(op.OperationID), "queued", func(reloaded *operation.Operation) {
+			c.withLock(op, "queued", func(reloaded *operation.Operation) {
 				if err := pipeline.SpawnClassify(rt, reloaded); err != nil {
 					c.failOperation(reloaded, err.Error())
 				}
 			})
 		case "classifying":
 			if !platform.ProcessAlive(op.PID) {
-				c.withLock(op, layout.UnclassifiedOperationDir(op.OperationID), "classifying", func(reloaded *operation.Operation) {
+				c.withLock(op, "classifying", func(reloaded *operation.Operation) {
 					if err := pipeline.Advance(rt, reloaded, c.RuntimeName, c.NotifyName); err != nil {
 						c.failOperation(reloaded, err.Error())
 					}
@@ -93,7 +92,7 @@ func (c *Commander) scan() {
 			if op.PID > 0 && platform.ProcessAlive(op.PID) {
 				continue
 			}
-			c.withLock(op, layout.OperationDir(op.Squad, op.OperationID), "active", func(reloaded *operation.Operation) {
+			c.withLock(op, "active", func(reloaded *operation.Operation) {
 				if err := pipeline.Collect(reloaded); err != nil {
 					log.Printf("[scan] %s: collect save error: %v", reloaded.OperationID, err)
 					return
@@ -114,7 +113,7 @@ func (c *Commander) scan() {
 
 // withLock acquires a per-operation flock, double-checks status, and calls fn.
 // Recovers from panics to prevent BackgroundLoop from crashing.
-func (c *Commander) withLock(op *operation.Operation, opDir string, expectedStatus string, fn func(reloaded *operation.Operation)) {
+func (c *Commander) withLock(op *operation.Operation, expectedStatus string, fn func(reloaded *operation.Operation)) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("[scan] PANIC in %s: %v", op.OperationID, r)
@@ -122,7 +121,7 @@ func (c *Commander) withLock(op *operation.Operation, opDir string, expectedStat
 		}
 	}()
 
-	lockPath := filepath.Join(opDir, ".lock")
+	lockPath := layout.LockPath(op.OperationID)
 	fl := flock.New(lockPath)
 	locked, err := fl.TryLock()
 	if !locked || err != nil {
