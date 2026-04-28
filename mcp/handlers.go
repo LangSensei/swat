@@ -191,7 +191,7 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 	}
 
 	// Compute counts before filtering
-	counts := map[string]int{"queued": 0, "active": 0, "completed": 0, "failed": 0}
+	counts := map[string]int{"queued": 0, "classifying": 0, "active": 0, "completed": 0, "failed": 0}
 	for _, op := range ops {
 		counts[op.Status]++
 	}
@@ -217,7 +217,7 @@ func (s *Server) handleList(args map[string]interface{}) toolResult {
 					filtered = append(filtered, op)
 				} else if op.FailedAt != nil && op.FailedAt.After(sinceTime) {
 					filtered = append(filtered, op)
-				} else if op.Status == "active" || op.Status == "queued" {
+				} else if op.Status == "active" || op.Status == "queued" || op.Status == "classifying" {
 					filtered = append(filtered, op) // always include in-flight
 				}
 			}

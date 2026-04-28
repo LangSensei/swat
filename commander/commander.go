@@ -11,7 +11,9 @@ import (
 	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
+	"github.com/LangSensei/swat/commander/pipeline"
 	"github.com/LangSensei/swat/commander/platform"
+	"github.com/LangSensei/swat/commander/runtime"
 )
 
 // Commander is the core orchestrator
@@ -64,10 +66,56 @@ func (c *Commander) scan() {
 		return
 	}
 	for _, op := range ops {
-		if op.Status == "active" {
+		switch op.Status {
+		case "queued":
+			c.spawnClassify(op)
+		case "classifying":
+			if !platform.ProcessAlive(op.PID) {
+				c.finishClassify(op)
+			}
+		case "active":
 			c.handleActive(op)
 		}
 	}
+}
+
+// spawnClassify starts the classifier subprocess for a queued operation.
+func (c *Commander) spawnClassify(op *operation.Operation) {
+	rt, err := runtime.New(c.RuntimeName)
+	if err != nil {
+		c.failOperation(op, fmt.Sprintf("init runtime: %v", err))
+		return
+	}
+	if err := pipeline.SpawnClassify(rt, op); err != nil {
+		c.failOperation(op, fmt.Sprintf("classify spawn: %v", err))
+	}
+}
+
+// finishClassify completes the classify phase and runs provision + launch.
+func (c *Commander) finishClassify(op *operation.Operation) {
+	rt, err := runtime.New(c.RuntimeName)
+	if err != nil {
+		c.failOperation(op, fmt.Sprintf("init runtime: %v", err))
+		return
+	}
+
+	reloaded, destDir, err := pipeline.FinishClassify(op, c.Notifier)
+	if err != nil {
+		// Use original op (still in _unclassified) for failure path
+		c.failOperation(op, err.Error())
+		return
+	}
+
+	if err := pipeline.Provision(rt, reloaded, destDir, c.RuntimeName, c.NotifyName); err != nil {
+		c.failOperation(reloaded, fmt.Sprintf("provision: %v", err))
+		return
+	}
+
+	if err := pipeline.LaunchAgent(rt, reloaded, destDir); err != nil {
+		c.failOperation(reloaded, fmt.Sprintf("launch: %v", err))
+		return
+	}
+	log.Printf("[scan] %s: launched successfully (squad=%s)", reloaded.OperationID, reloaded.Squad)
 }
 
 func (c *Commander) handleActive(op *operation.Operation) {
@@ -104,7 +152,7 @@ func (c *Commander) handleActive(op *operation.Operation) {
 }
 
 // dispatchForIntake is the callback used by intake.ProcessDue for recurring tasks.
-// It creates a new operation and runs the full pipeline: classify → provision → launch.
+// It creates a new operation with status "queued". The scan loop picks it up.
 func (c *Commander) dispatchForIntake(brief, details string) (string, error) {
 	now := time.Now().UTC()
 	op := &operation.Operation{
@@ -117,19 +165,11 @@ func (c *Commander) dispatchForIntake(brief, details string) (string, error) {
 	if err := operation.Create(op); err != nil {
 		return "", err
 	}
-
-	c.processOperation(op)
 	return op.OperationID, nil
 }
 
 // processExistingOperation is the callback used by intake.ProcessDue for immediate tasks.
-// It loads an existing operation and runs the pipeline on it.
+// The operation already exists with status "queued" — the scan loop will pick it up.
 func (c *Commander) processExistingOperation(operationID string) error {
-	op, err := operation.Find(operationID)
-	if err != nil {
-		return fmt.Errorf("find operation %s: %w", operationID, err)
-	}
-
-	c.processOperation(op)
 	return nil
 }

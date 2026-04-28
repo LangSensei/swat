@@ -70,10 +70,8 @@ func Save(op *Operation) error {
 		"operation_id": op.OperationID,
 		"squad":        op.Squad,
 		"status":       op.Status,
+		"pid":          fmt.Sprintf("%d", op.PID),
 		"created_at":   op.CreatedAt.Format(time.RFC3339),
-	}
-	if op.PID > 0 {
-		patches["pid"] = fmt.Sprintf("%d", op.PID)
 	}
 	if op.DispatchedAt != nil {
 		patches["dispatched_at"] = op.DispatchedAt.Format(time.RFC3339)
