@@ -78,7 +78,7 @@ func (c *Commander) scan() {
 		case "queued":
 			c.withLock(op, layout.UnclassifiedOperationDir(op.OperationID), "queued", func(reloaded *operation.Operation) {
 				if err := pipeline.SpawnClassify(rt, reloaded); err != nil {
-					c.failOperation(reloaded, fmt.Sprintf("classify spawn: %v", err))
+					c.failOperation(reloaded, err.Error())
 				}
 			})
 		case "classifying":

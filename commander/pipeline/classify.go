@@ -20,7 +20,8 @@ func SpawnClassify(rt runtime.RuntimeAdapter, op *operation.Operation) error {
 	unclassifiedDir := layout.UnclassifiedOperationDir(op.OperationID)
 
 	if err := rt.PrepareWorkspace(unclassifiedDir, runtime.PhaseClassify); err != nil {
-		return fmt.Errorf("prepare workspace (classify): %v", err)
+		log.Printf("[classify] %s: prepare workspace error: %v", op.OperationID, err)
+		return fmt.Errorf("classify_spawn_failed")
 	}
 
 	prompt := buildClassifyPrompt()
@@ -30,14 +31,16 @@ func SpawnClassify(rt runtime.RuntimeAdapter, op *operation.Operation) error {
 	logPath := filepath.Join(unclassifiedDir, "classify.log")
 	logFile, err := os.Create(logPath)
 	if err != nil {
-		return fmt.Errorf("create classify log: %v", err)
+		log.Printf("[classify] %s: create log error: %v", op.OperationID, err)
+		return fmt.Errorf("classify_spawn_failed")
 	}
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 
 	if err := cmd.Start(); err != nil {
 		logFile.Close()
-		return fmt.Errorf("start operation classifier: %v", err)
+		log.Printf("[classify] %s: spawn error: %v", op.OperationID, err)
+		return fmt.Errorf("classify_spawn_failed")
 	}
 
 	now := time.Now().UTC()
@@ -48,7 +51,8 @@ func SpawnClassify(rt runtime.RuntimeAdapter, op *operation.Operation) error {
 	if err := operation.Save(op); err != nil {
 		cmd.Process.Kill()
 		logFile.Close()
-		return fmt.Errorf("save classifying state: %w", err)
+		log.Printf("[classify] %s: save state error: %v", op.OperationID, err)
+		return fmt.Errorf("classify_spawn_failed")
 	}
 
 	go func() {
@@ -68,28 +72,34 @@ func Advance(rt runtime.RuntimeAdapter, op *operation.Operation, runtimeName, no
 
 	if op.Squad == "" {
 		summaries := squads.ListSummaries()
-		return fmt.Errorf("no matching squad found\n\nInstalled squads:\n%s", summaries)
+		log.Printf("[classify] %s: no squad match. Installed squads:\n%s", op.OperationID, summaries)
+		return fmt.Errorf("classify_no_squad")
 	}
 
 	manifestPath := filepath.Join(layout.BlueprintSquadDir(op.Squad), "MANIFEST.md")
 	if !platform.FileExists(manifestPath) {
-		return fmt.Errorf("classified to squad '%s' which is not installed", op.Squad)
+		log.Printf("[classify] %s: squad %q not installed (no MANIFEST.md)", op.OperationID, op.Squad)
+		return fmt.Errorf("classify_squad_not_installed")
 	}
 
 	destDir := layout.OperationDir(op.Squad, op.OperationID)
 	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
-		return fmt.Errorf("create squad dir: %v", err)
+		log.Printf("[classify] %s: create squad dir error: %v", op.OperationID, err)
+		return fmt.Errorf("classify_move_failed")
 	}
 	if err := os.Rename(layout.UnclassifiedOperationDir(op.OperationID), destDir); err != nil {
-		return fmt.Errorf("move to squad: %v", err)
+		log.Printf("[classify] %s: move to squad error: %v", op.OperationID, err)
+		return fmt.Errorf("classify_move_failed")
 	}
 
 	if err := Provision(rt, op, destDir, runtimeName, notifyName); err != nil {
-		return fmt.Errorf("provision: %v", err)
+		log.Printf("[classify] %s: provision error: %v", op.OperationID, err)
+		return fmt.Errorf("provision_failed")
 	}
 
 	if err := LaunchAgent(rt, op, destDir); err != nil {
-		return fmt.Errorf("launch: %v", err)
+		log.Printf("[classify] %s: launch error: %v", op.OperationID, err)
+		return fmt.Errorf("launch_failed")
 	}
 
 	log.Printf("[scan] %s: launched successfully (squad=%s)", op.OperationID, op.Squad)
