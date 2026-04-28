@@ -48,8 +48,8 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 			"- Key findings from referenced operations that are relevant to THIS operation "+
 			"- Any data points or metrics the operator should know before starting "+
 			"## Output "+
-			"Update OPERATION.md frontmatter: squad and references fields only. "+
-			"Replace the [CLASSIFY: ...] placeholder with your enrichment. "+
+			"Update OPERATION.md in a SINGLE edit operation: set squad and references fields in frontmatter, and replace the [CLASSIFY: ...] placeholder with your enrichment. "+
+			"CRITICAL: All changes to OPERATION.md MUST be applied in one single file write. Do NOT split into multiple edit operations on the same file. "+
 			"Do NOT modify any other frontmatter fields.",
 		layout.BlueprintSquadsDir(),
 		layout.SquadsDir(),
