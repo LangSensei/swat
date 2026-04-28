@@ -90,16 +90,11 @@ func FinishClassify(op *operation.Operation, notifier notify.Notifier) (*operati
 	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
 		return nil, "", fmt.Errorf("create squad dir: %v", err)
 	}
-	if err := os.Rename(unclassifiedDir(op.OperationID), destDir); err != nil {
+	if err := os.Rename(layout.UnclassifiedOperationDir(op.OperationID), destDir); err != nil {
 		return nil, "", fmt.Errorf("move to squad: %v", err)
 	}
 
 	return reloaded, destDir, nil
-}
-
-// unclassifiedDir is a shorthand for layout.UnclassifiedOperationDir.
-func unclassifiedDir(opID string) string {
-	return layout.UnclassifiedOperationDir(opID)
 }
 
 // buildClassifyPrompt constructs the classifier system prompt.
