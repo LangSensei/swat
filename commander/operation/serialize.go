@@ -21,36 +21,9 @@ func buildOperationFile(op *Operation) (string, error) {
 
 	result := string(tmplData)
 
-	// Commander fields
+	// Dynamic fields filled at creation time
 	result = strings.ReplaceAll(result, "{OPERATION_ID}", op.OperationID)
-	result = strings.ReplaceAll(result, "{SQUAD}", op.Squad)
-	if op.PID > 0 {
-		result = strings.ReplaceAll(result, "{PID}", fmt.Sprintf("%d", op.PID))
-	} else {
-		result = strings.ReplaceAll(result, "{PID}", "")
-	}
-
 	result = strings.ReplaceAll(result, "{CREATED_AT}", op.CreatedAt.Format(time.RFC3339))
-	result = strings.ReplaceAll(result, "{DISPATCHED_AT}", formatOptionalTime(op.DispatchedAt))
-	result = strings.ReplaceAll(result, "{FAILED_AT}", formatOptionalTime(op.FailedAt))
-	result = strings.ReplaceAll(result, "{FAILURE_REASON}", formatOptionalStr(op.FailureReason))
-
-	// References require special handling for YAML list format
-	if len(op.References) > 0 {
-		var refStr strings.Builder
-		refStr.WriteString("references:")
-		for _, ref := range op.References {
-			refStr.WriteString(fmt.Sprintf("\n  - {type: \"%s\", value: \"%s\"}", ref.Type, ref.Value))
-		}
-		result = strings.Replace(result, "references: {REFERENCES}", refStr.String(), 1)
-	} else {
-		result = strings.ReplaceAll(result, "{REFERENCES}", "[]")
-	}
-
-	// Captain output fields
-	result = strings.ReplaceAll(result, "{STATUS}", op.Status)
-	result = strings.ReplaceAll(result, "{SUMMARY}", op.Summary)
-	result = strings.ReplaceAll(result, "{COMPLETED_AT}", formatOptionalTime(op.CompletedAt))
 
 	// Body placeholders
 	briefTitle := op.Brief
@@ -66,20 +39,6 @@ func buildOperationFile(op *Operation) (string, error) {
 	}
 
 	return result, nil
-}
-
-func formatOptionalTime(t *time.Time) string {
-	if t != nil {
-		return t.Format(time.RFC3339)
-	}
-	return ""
-}
-
-func formatOptionalStr(s *string) string {
-	if s != nil && *s != "" {
-		return *s
-	}
-	return ""
 }
 
 // parseOperationMD parses an OPERATION.md file into an Operation struct.
