@@ -494,6 +494,7 @@ func (s *Server) errorResponse(id interface{}, code int, msg string) *jsonrpcRes
 
 func (s *Server) handleNotify(args map[string]interface{}) toolResult {
 	message, _ := args["message"].(string)
+	opID, _ := args["operation_id"].(string)
 	if message == "" {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: "message is required"}},
@@ -508,7 +509,7 @@ func (s *Server) handleNotify(args map[string]interface{}) toolResult {
 		}
 	}
 
-	if err := s.Notifier.Notify("", message); err != nil {
+	if err := s.Notifier.Notify(opID, message); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("notify failed: %v", err)}},
 			IsError: true,
