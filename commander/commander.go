@@ -84,7 +84,7 @@ func (c *Commander) scan() {
 		case "classifying":
 			if !platform.ProcessAlive(op.PID) {
 				c.withLock(op, layout.UnclassifiedOperationDir(op.OperationID), "classifying", func(reloaded *operation.Operation) {
-					if err := pipeline.Advance(rt, reloaded, c.Notifier, c.RuntimeName, c.NotifyName); err != nil {
+					if err := pipeline.Advance(rt, reloaded, c.RuntimeName, c.NotifyName); err != nil {
 						c.failOperation(reloaded, err.Error())
 					}
 				})
@@ -96,9 +96,13 @@ func (c *Commander) scan() {
 			c.withLock(op, layout.OperationDir(op.Squad, op.OperationID), "active", func(reloaded *operation.Operation) {
 				if err := pipeline.Collect(reloaded); err != nil {
 					log.Printf("[scan] %s: collect save error: %v", reloaded.OperationID, err)
+					return
 				}
+				// Collect sets status — if it's "failed", Collect already saved it,
+				// but we still need to notify. Use Notifier directly since Save already done.
 				if reloaded.Status == "failed" && c.Notifier != nil {
-					msg := "Operation " + reloaded.OperationID + " failed"
+					reason := "process_exited_without_completion"
+					msg := fmt.Sprintf("Operation %s failed: %s", reloaded.OperationID, reason)
 					if err := c.Notifier.Notify(msg); err != nil {
 						log.Printf("[scan] notify error: %v", err)
 					}

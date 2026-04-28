@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/LangSensei/swat/commander/layout"
-	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
 	"github.com/LangSensei/swat/commander/runtime"
@@ -64,23 +63,17 @@ func SpawnClassify(rt runtime.RuntimeAdapter, op *operation.Operation) error {
 // Advance completes classify and transitions an operation from classifying → active.
 // Reloads OPERATION.md to get classifier output, validates squad, moves to squad dir,
 // provisions, and launches the agent.
-func Advance(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notify.Notifier, runtimeName, notifyName string) error {
+func Advance(rt runtime.RuntimeAdapter, op *operation.Operation, runtimeName, notifyName string) error {
 	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, op.Squad)
 
 	if op.Squad == "" {
 		summaries := squads.ListSummaries()
-		if notifier != nil {
-			notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, summaries))
-		}
-		return fmt.Errorf("classify failed: no squad assigned")
+		return fmt.Errorf("no matching squad found\n\nInstalled squads:\n%s", summaries)
 	}
 
 	manifestPath := filepath.Join(layout.BlueprintSquadDir(op.Squad), "MANIFEST.md")
 	if !platform.FileExists(manifestPath) {
-		if notifier != nil {
-			notifier.Notify(fmt.Sprintf("Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s", op.Squad, op.OperationID, op.Brief))
-		}
-		return fmt.Errorf("classify assigned unknown squad: %s", op.Squad)
+		return fmt.Errorf("classified to squad '%s' which is not installed", op.Squad)
 	}
 
 	destDir := layout.OperationDir(op.Squad, op.OperationID)
