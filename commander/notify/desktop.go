@@ -3,6 +3,7 @@ package notify
 import (
 	"encoding/base64"
 	"fmt"
+	"html"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,8 +34,10 @@ func (d *DesktopNotifier) Notify(opID string, message string) error {
 		if reportPath != "" {
 			// Convert to file:/// URL with forward slashes
 			fileURL := "file:///" + strings.ReplaceAll(reportPath, `\`, "/")
-			launchAttr = fmt.Sprintf(` launch="%s" activationType="protocol"`, fileURL)
+			safeURL := html.EscapeString(fileURL)
+			launchAttr = fmt.Sprintf(` launch="%s" activationType="protocol"`, safeURL)
 		}
+		safeMessage := html.EscapeString(message)
 		ps := fmt.Sprintf(
 			`[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; `+
 				`[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] > $null; `+
@@ -43,7 +46,7 @@ func (d *DesktopNotifier) Notify(opID string, message string) error {
 				`$doc.LoadXml($xml); `+
 				`$toast = [Windows.UI.Notifications.ToastNotification]::new($doc); `+
 				`[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('SWAT').Show($toast)`,
-			launchAttr, strings.ReplaceAll(message, "'", "''"),
+			launchAttr, safeMessage,
 		)
 		encoded := encodeUTF16LEBase64(ps)
 		return exec.Command("powershell", "-NoProfile", "-EncodedCommand", encoded).Run()
