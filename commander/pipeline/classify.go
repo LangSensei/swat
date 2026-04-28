@@ -5,24 +5,100 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/LangSensei/swat/commander/layout"
-	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
 	"github.com/LangSensei/swat/commander/platform"
 	"github.com/LangSensei/swat/commander/runtime"
 	"github.com/LangSensei/swat/commander/squads"
 )
 
-// Classify runs the LLM-based operation classifier on an unclassified operation.
-func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notify.Notifier) (*operation.Operation, string, error) {
+// SpawnClassify starts the LLM-based operation classifier as a non-blocking subprocess.
+// It saves the classify PID and sets status to "classifying", then returns immediately.
+func SpawnClassify(rt runtime.RuntimeAdapter, op *operation.Operation) error {
 	unclassifiedDir := layout.UnclassifiedOperationDir(op.OperationID)
 
 	if err := rt.PrepareWorkspace(unclassifiedDir, runtime.PhaseClassify); err != nil {
-		return nil, "", fmt.Errorf("prepare workspace (classify): %v", err)
+		return fmt.Errorf("prepare workspace (classify): %v", err)
 	}
 
-	prompt := fmt.Sprintf(
+	prompt := buildClassifyPrompt()
+
+	cmd := rt.BuildCommand(prompt, unclassifiedDir)
+
+	logPath := filepath.Join(unclassifiedDir, "classify.log")
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		return fmt.Errorf("create classify log: %v", err)
+	}
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+
+	if err := cmd.Start(); err != nil {
+		logFile.Close()
+		return fmt.Errorf("start operation classifier: %v", err)
+	}
+
+	now := time.Now().UTC()
+	op.Status = "classifying"
+	op.PID = cmd.Process.Pid
+	op.DispatchedAt = &now
+
+	if err := operation.Save(op); err != nil {
+		cmd.Process.Kill()
+		logFile.Close()
+		return fmt.Errorf("save classifying state: %w", err)
+	}
+
+	go func() {
+		defer logFile.Close()
+		cmd.Wait()
+	}()
+
+	log.Printf("[classify] %s: classifier spawned (pid=%d)", op.OperationID, op.PID)
+	return nil
+}
+
+// Advance completes classify and transitions an operation from classifying → active.
+// Reloads OPERATION.md to get classifier output, validates squad, moves to squad dir,
+// provisions, and launches the agent.
+func Advance(rt runtime.RuntimeAdapter, op *operation.Operation, runtimeName, notifyName string) error {
+	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, op.Squad)
+
+	if op.Squad == "" {
+		summaries := squads.ListSummaries()
+		return fmt.Errorf("no matching squad found\n\nInstalled squads:\n%s", summaries)
+	}
+
+	manifestPath := filepath.Join(layout.BlueprintSquadDir(op.Squad), "MANIFEST.md")
+	if !platform.FileExists(manifestPath) {
+		return fmt.Errorf("classified to squad '%s' which is not installed", op.Squad)
+	}
+
+	destDir := layout.OperationDir(op.Squad, op.OperationID)
+	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
+		return fmt.Errorf("create squad dir: %v", err)
+	}
+	if err := os.Rename(layout.UnclassifiedOperationDir(op.OperationID), destDir); err != nil {
+		return fmt.Errorf("move to squad: %v", err)
+	}
+
+	if err := Provision(rt, op, destDir, runtimeName, notifyName); err != nil {
+		return fmt.Errorf("provision: %v", err)
+	}
+
+	if err := LaunchAgent(rt, op, destDir); err != nil {
+		return fmt.Errorf("launch: %v", err)
+	}
+
+	log.Printf("[scan] %s: launched successfully (squad=%s)", op.OperationID, op.Squad)
+	return nil
+}
+
+// buildClassifyPrompt constructs the classifier system prompt.
+func buildClassifyPrompt() string {
+	return fmt.Sprintf(
 		"You are an Operation Classifier. Your job is to route an operation to the right squad and enrich it with relevant context. "+
 			"## Step 1: Read the operation "+
 			"Read OPERATION.md for the brief (H1 title) and details (## Assignment section). "+
@@ -54,58 +130,4 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 		layout.BlueprintSquadsDir(),
 		layout.SquadsDir(),
 	)
-
-	cmd := rt.BuildCommand(prompt, unclassifiedDir)
-
-	logPath := filepath.Join(unclassifiedDir, "classify.log")
-	logFile, err := os.Create(logPath)
-	if err != nil {
-		return nil, "", fmt.Errorf("create classify log: %v", err)
-	}
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-
-	if err := cmd.Start(); err != nil {
-		logFile.Close()
-		return nil, "", fmt.Errorf("start operation classifier: %v", err)
-	}
-	if err := cmd.Wait(); err != nil {
-		logFile.Close()
-		log.Printf("[classify] %s: operation classifier exited with error: %v", op.OperationID, err)
-	} else {
-		logFile.Close()
-		log.Printf("[classify] %s: operation classifier completed successfully", op.OperationID)
-	}
-
-	reloaded, err := operation.Load("_unclassified", op.OperationID)
-	if err != nil {
-		return nil, "", fmt.Errorf("reload after classify: %v", err)
-	}
-	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, reloaded.Squad)
-
-	if reloaded.Squad == "" {
-		summaries := squads.ListSummaries()
-		if notifier != nil {
-			notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, summaries))
-		}
-		return nil, "", fmt.Errorf("classify failed: no squad assigned")
-	}
-
-	manifestPath := filepath.Join(layout.BlueprintSquadDir(reloaded.Squad), "MANIFEST.md")
-	if !platform.FileExists(manifestPath) {
-		if notifier != nil {
-			notifier.Notify(fmt.Sprintf("Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s", reloaded.Squad, op.OperationID, op.Brief))
-		}
-		return nil, "", fmt.Errorf("classify assigned unknown squad: %s", reloaded.Squad)
-	}
-
-	destDir := layout.OperationDir(reloaded.Squad, op.OperationID)
-	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
-		return nil, "", fmt.Errorf("create squad dir: %v", err)
-	}
-	if err := os.Rename(unclassifiedDir, destDir); err != nil {
-		return nil, "", fmt.Errorf("move to squad: %v", err)
-	}
-
-	return reloaded, destDir, nil
 }

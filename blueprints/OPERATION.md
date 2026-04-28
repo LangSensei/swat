@@ -14,7 +14,7 @@ squad: {SQUAD}
 references: {REFERENCES}
 
 # ── OPERATOR (fill during execution) ──
-# queued → active → completed / failed
+# queued → classifying → active → completed / failed
 status: {STATUS}
 # 2-3 sentence summary of outcome
 summary: {SUMMARY}

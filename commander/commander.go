@@ -11,7 +11,10 @@ import (
 	"github.com/LangSensei/swat/commander/layout"
 	"github.com/LangSensei/swat/commander/notify"
 	"github.com/LangSensei/swat/commander/operation"
+	"github.com/LangSensei/swat/commander/pipeline"
 	"github.com/LangSensei/swat/commander/platform"
+	"github.com/LangSensei/swat/commander/runtime"
+	"github.com/gofrs/flock"
 )
 
 // Commander is the core orchestrator
@@ -53,58 +56,95 @@ func (c *Commander) BackgroundLoop(interval time.Duration) {
 
 	for range ticker.C {
 		c.scan()
-		intake.ProcessDue(c.dispatchForIntake, c.processExistingOperation)
+		intake.ProcessDue(c.dispatchForIntake, nil)
 	}
 }
 
 func (c *Commander) scan() {
 	ops, err := operation.List()
 	if err != nil {
-		log.Printf("[scan] error: %v", err)
+		log.Printf("[scan] list error: %v", err)
 		return
 	}
+
+	rt, err := runtime.New(c.RuntimeName)
+	if err != nil {
+		log.Printf("[scan] init runtime: %v", err)
+		return
+	}
+
 	for _, op := range ops {
-		if op.Status == "active" {
-			c.handleActive(op)
+		switch op.Status {
+		case "queued":
+			c.withLock(op, layout.UnclassifiedOperationDir(op.OperationID), "queued", func(reloaded *operation.Operation) {
+				if err := pipeline.SpawnClassify(rt, reloaded); err != nil {
+					c.failOperation(reloaded, fmt.Sprintf("classify spawn: %v", err))
+				}
+			})
+		case "classifying":
+			if !platform.ProcessAlive(op.PID) {
+				c.withLock(op, layout.UnclassifiedOperationDir(op.OperationID), "classifying", func(reloaded *operation.Operation) {
+					if err := pipeline.Advance(rt, reloaded, c.RuntimeName, c.NotifyName); err != nil {
+						c.failOperation(reloaded, err.Error())
+					}
+				})
+			}
+		case "active":
+			if op.PID > 0 && platform.ProcessAlive(op.PID) {
+				continue
+			}
+			c.withLock(op, layout.OperationDir(op.Squad, op.OperationID), "active", func(reloaded *operation.Operation) {
+				if err := pipeline.Collect(reloaded); err != nil {
+					log.Printf("[scan] %s: collect save error: %v", reloaded.OperationID, err)
+					return
+				}
+				// Collect sets status — if it's "failed", Collect already saved it,
+				// but we still need to notify. Use Notifier directly since Save already done.
+				if reloaded.Status == "failed" && c.Notifier != nil {
+					reason := "process_exited_without_completion"
+					msg := fmt.Sprintf("Operation %s failed: %s", reloaded.OperationID, reason)
+					if err := c.Notifier.Notify(msg); err != nil {
+						log.Printf("[scan] notify error: %v", err)
+					}
+				}
+			})
 		}
 	}
 }
 
-func (c *Commander) handleActive(op *operation.Operation) {
-	if op.PID > 0 && platform.ProcessAlive(op.PID) {
+// withLock acquires a per-operation flock, double-checks status, and calls fn.
+// Recovers from panics to prevent BackgroundLoop from crashing.
+func (c *Commander) withLock(op *operation.Operation, opDir string, expectedStatus string, fn func(reloaded *operation.Operation)) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[scan] PANIC in %s: %v", op.OperationID, r)
+			c.failOperation(op, fmt.Sprintf("panic: %v", r))
+		}
+	}()
+
+	lockPath := filepath.Join(opDir, ".lock")
+	fl := flock.New(lockPath)
+	locked, err := fl.TryLock()
+	if !locked || err != nil {
+		return
+	}
+	defer fl.Unlock()
+
+	var reloaded *operation.Operation
+	if expectedStatus == "queued" || expectedStatus == "classifying" {
+		reloaded, err = operation.Load("_unclassified", op.OperationID)
+	} else {
+		reloaded, err = operation.Load(op.Squad, op.OperationID)
+	}
+	if err != nil || reloaded.Status != expectedStatus {
 		return
 	}
 
-	now := time.Now().UTC()
-	opDir := layout.OperationDir(op.Squad, op.OperationID)
-	reportExists := platform.FileExists(filepath.Join(opDir, "report.html"))
-	opCompleted := platform.FileContains(layout.OperationMDPath(op.Squad, op.OperationID), "status: completed")
-
-	if reportExists && opCompleted {
-		op.Status = "completed"
-		op.CompletedAt = &now
-		op.PID = 0
-	} else {
-		reason := "process_exited_without_completion"
-		op.Status = "failed"
-		op.FailedAt = &now
-		op.FailureReason = &reason
-		op.PID = 0
-	}
-	if err := operation.Save(op); err != nil {
-		log.Printf("[scan] %s: failed to save collected state: %v", op.OperationID, err)
-	}
-
-	if c.Notifier != nil && op.Status != "completed" {
-		msg := "Operation " + op.OperationID + " failed"
-		if err := c.Notifier.Notify(msg); err != nil {
-			log.Printf("[scan] notify error: %v", err)
-		}
-	}
+	fn(reloaded)
 }
 
 // dispatchForIntake is the callback used by intake.ProcessDue for recurring tasks.
-// It creates a new operation and runs the full pipeline: classify → provision → launch.
+// It creates a new operation with status "queued". The scan loop picks it up.
 func (c *Commander) dispatchForIntake(brief, details string) (string, error) {
 	now := time.Now().UTC()
 	op := &operation.Operation{
@@ -117,19 +157,7 @@ func (c *Commander) dispatchForIntake(brief, details string) (string, error) {
 	if err := operation.Create(op); err != nil {
 		return "", err
 	}
-
-	c.processOperation(op)
 	return op.OperationID, nil
 }
 
-// processExistingOperation is the callback used by intake.ProcessDue for immediate tasks.
-// It loads an existing operation and runs the pipeline on it.
-func (c *Commander) processExistingOperation(operationID string) error {
-	op, err := operation.Find(operationID)
-	if err != nil {
-		return fmt.Errorf("find operation %s: %w", operationID, err)
-	}
 
-	c.processOperation(op)
-	return nil
-}

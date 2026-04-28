@@ -250,12 +250,14 @@ func processImmediate(item *Immediate, processFn ProcessFunc, fl *flock.Flock) {
 		os.Remove(lockPath(item.ID))
 	}()
 
-	if err := processFn(item.OperationID); err != nil {
-		log.Printf("[intake] immediate %s: process failed: %v", item.ID, err)
-		return
+	if processFn != nil {
+		if err := processFn(item.OperationID); err != nil {
+			log.Printf("[intake] immediate %s: process failed: %v", item.ID, err)
+			return
+		}
 	}
 
-	// Delete the intake file after successful processing
+	// Delete the intake file
 	if err := os.Remove(jsonPath(item.ID)); err != nil {
 		log.Printf("[intake] immediate %s: failed to remove intake file: %v", item.ID, err)
 	}
