@@ -508,7 +508,7 @@ func (s *Server) handleNotify(args map[string]interface{}) toolResult {
 		}
 	}
 
-	if err := s.Notifier.Notify(message); err != nil {
+	if err := s.Notifier.Notify("", message); err != nil {
 		return toolResult{
 			Content: []contentBlock{{Type: "text", Text: fmt.Sprintf("notify failed: %v", err)}},
 			IsError: true,

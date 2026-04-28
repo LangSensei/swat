@@ -44,7 +44,7 @@ func (c *Commander) failOperation(op *operation.Operation, reason string) error 
 
 	if c.Notifier != nil {
 		msg := fmt.Sprintf("Operation %s failed: %s", op.OperationID, reason)
-		if err := c.Notifier.Notify(msg); err != nil {
+		if err := c.Notifier.Notify(op.OperationID, msg); err != nil {
 			log.Printf("[dispatch] %s: notify error: %v", op.OperationID, err)
 		}
 	}

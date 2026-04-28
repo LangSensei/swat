@@ -102,7 +102,7 @@ func (c *Commander) scan() {
 				if reloaded.Status == "failed" && c.Notifier != nil {
 					reason := "process_exited_without_completion"
 					msg := fmt.Sprintf("Operation %s failed: %s", reloaded.OperationID, reason)
-					if err := c.Notifier.Notify(msg); err != nil {
+					if err := c.Notifier.Notify(reloaded.OperationID, msg); err != nil {
 						log.Printf("[scan] notify error: %v", err)
 					}
 				}
