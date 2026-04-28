@@ -68,6 +68,14 @@ func UnclassifiedOperationDir(opID string) string { return OperationDir("_unclas
 // UnclassifiedOperationMDPath returns the OPERATION.md path for an unclassified operation.
 func UnclassifiedOperationMDPath(opID string) string { return OperationMDPath("_unclassified", opID) }
 
+// --- Locks ---
+
+// LocksDir returns the global per-operation locks directory.
+func LocksDir() string { return filepath.Join(root, "locks") }
+
+// LockPath returns the lock file path for a given operation ID.
+func LockPath(opID string) string { return filepath.Join(LocksDir(), opID+".lock") }
+
 // --- Intake ---
 
 // IntakeDir returns the intake queue directory.
@@ -85,6 +93,7 @@ func EnsureDirs() {
 		BlueprintMCPsDir(),
 		SquadsDir(),
 		UnclassifiedOperationsDir(),
+		LocksDir(),
 	} {
 		os.MkdirAll(dir, 0755)
 	}

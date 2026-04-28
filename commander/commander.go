@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
-	"path/filepath"
 	"time"
 
 	"github.com/LangSensei/swat/commander/intake"
@@ -122,7 +121,7 @@ func (c *Commander) withLock(op *operation.Operation, opDir string, expectedStat
 		}
 	}()
 
-	lockPath := filepath.Join(opDir, ".lock")
+	lockPath := layout.LockPath(op.OperationID)
 	fl := flock.New(lockPath)
 	locked, err := fl.TryLock()
 	if !locked || err != nil {
