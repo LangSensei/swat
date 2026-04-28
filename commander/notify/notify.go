@@ -8,7 +8,7 @@ import (
 
 // Notifier sends user-facing notifications.
 type Notifier interface {
-	Notify(message string) error
+	Notify(opID string, message string) error
 }
 
 // New creates a Notifier for the given target name.

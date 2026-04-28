@@ -122,7 +122,7 @@ func newOpenClawNotifier() (*OpenClawNotifier, error) {
 
 // Notify sends a notification via the OpenClaw Gateway API.
 // Retries up to 2 times with a 2-second delay between attempts.
-func (o *OpenClawNotifier) Notify(message string) error {
+func (o *OpenClawNotifier) Notify(opID string, message string) error {
 	args := map[string]string{
 		"action":  "send",
 		"target":  o.target,
