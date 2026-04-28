@@ -23,18 +23,34 @@ func Classify(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notif
 	}
 
 	prompt := fmt.Sprintf(
-		"You are a task classifier and enricher. "+
-			"Read OPERATION.md in the current directory for the task. "+
-			"Read all MANIFEST.md files under %s (skip _framework) to find available squads. "+
-			"Read past operations under %s for historical context. "+
-			"Your job: "+
-			"After reading all context, update OPERATION.md in a SINGLE edit operation containing ALL of the following changes: "+
-			"1. Set the 'squad' field in frontmatter to the best matching squad. "+
-			"2. Set the 'references' field to relevant historical operations as [{type: \"operation\", value: \"path\"}]. "+
-			"3. Replace the `[CLASSIFY: ...]` placeholder in ### Context with historical context, related operation findings, and key metrics. Keep the ## Assignment text intact. "+
-			"CRITICAL: All three changes MUST be applied in one single file write. Do NOT split into multiple edit operations on the same file. "+
-			"If no squad is a good fit for the task, leave the squad field empty. "+
-			"Do NOT modify any other frontmatter fields besides 'squad' and 'references'.",
+		"You are an Operation Classifier. Your job is to route an operation to the right squad and enrich it with relevant context. "+
+			"## Step 1: Read the operation "+
+			"Read OPERATION.md for the brief (H1 title) and details (## Assignment section). "+
+			"## Step 2: Read available squads "+
+			"Read each MANIFEST.md under %s (skip _framework). "+
+			"For each squad, note: name, domain, description, skills. "+
+			"## Step 3: Match "+
+			"Choose the squad whose domain and description best matches the operation. "+
+			"Decision criteria (in priority order): "+
+			"1. Domain match — operation subject falls within squad's stated domain "+
+			"2. Skill match — operation requires skills the squad has "+
+			"3. Specificity — prefer more specific squad over general one "+
+			"If two squads tie, choose the one with more relevant historical operations. "+
+			"If no squad fits, leave squad field empty. "+
+			"## Step 4: Find references "+
+			"Scan OPERATION.md files from the matched squad's operations/ directory (%s). "+
+			"- First pass: read the frontmatter (status, summary) and the H1 title (brief) of all operations "+
+			"- Second pass: for the 5-10 most relevant completed operations, read full content "+
+			"- Add the most valuable ones as references (up to 10) "+
+			"## Step 5: Enrich context "+
+			"In the ### Context section, write: "+
+			"- Why this squad was chosen (1 sentence) "+
+			"- Key findings from referenced operations that are relevant to THIS operation "+
+			"- Any data points or metrics the operator should know before starting "+
+			"## Output "+
+			"Update OPERATION.md in a SINGLE edit operation: set squad and references fields in frontmatter, and replace the [CLASSIFY: ...] placeholder with your enrichment. "+
+			"CRITICAL: All changes to OPERATION.md MUST be applied in one single file write. Do NOT split into multiple edit operations on the same file. "+
+			"Do NOT modify any other frontmatter fields.",
 		layout.BlueprintSquadsDir(),
 		layout.SquadsDir(),
 	)
