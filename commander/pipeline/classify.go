@@ -65,13 +65,9 @@ func SpawnClassify(rt runtime.RuntimeAdapter, op *operation.Operation) error {
 // Reloads OPERATION.md to get classifier output, validates squad, moves to squad dir,
 // provisions, and launches the agent.
 func Advance(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notify.Notifier, runtimeName, notifyName string) error {
-	reloaded, err := operation.Load("_unclassified", op.OperationID)
-	if err != nil {
-		return fmt.Errorf("reload after classify: %v", err)
-	}
-	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, reloaded.Squad)
+	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, op.Squad)
 
-	if reloaded.Squad == "" {
+	if op.Squad == "" {
 		summaries := squads.ListSummaries()
 		if notifier != nil {
 			notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, summaries))
@@ -79,15 +75,15 @@ func Advance(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notify
 		return fmt.Errorf("classify failed: no squad assigned")
 	}
 
-	manifestPath := filepath.Join(layout.BlueprintSquadDir(reloaded.Squad), "MANIFEST.md")
+	manifestPath := filepath.Join(layout.BlueprintSquadDir(op.Squad), "MANIFEST.md")
 	if !platform.FileExists(manifestPath) {
 		if notifier != nil {
-			notifier.Notify(fmt.Sprintf("Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s", reloaded.Squad, op.OperationID, op.Brief))
+			notifier.Notify(fmt.Sprintf("Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s", op.Squad, op.OperationID, op.Brief))
 		}
-		return fmt.Errorf("classify assigned unknown squad: %s", reloaded.Squad)
+		return fmt.Errorf("classify assigned unknown squad: %s", op.Squad)
 	}
 
-	destDir := layout.OperationDir(reloaded.Squad, op.OperationID)
+	destDir := layout.OperationDir(op.Squad, op.OperationID)
 	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
 		return fmt.Errorf("create squad dir: %v", err)
 	}
@@ -95,15 +91,15 @@ func Advance(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notify
 		return fmt.Errorf("move to squad: %v", err)
 	}
 
-	if err := Provision(rt, reloaded, destDir, runtimeName, notifyName); err != nil {
+	if err := Provision(rt, op, destDir, runtimeName, notifyName); err != nil {
 		return fmt.Errorf("provision: %v", err)
 	}
 
-	if err := LaunchAgent(rt, reloaded, destDir); err != nil {
+	if err := LaunchAgent(rt, op, destDir); err != nil {
 		return fmt.Errorf("launch: %v", err)
 	}
 
-	log.Printf("[scan] %s: launched successfully (squad=%s)", reloaded.OperationID, reloaded.Squad)
+	log.Printf("[scan] %s: launched successfully (squad=%s)", op.OperationID, op.Squad)
 	return nil
 }
 
