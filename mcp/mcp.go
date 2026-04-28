@@ -156,7 +156,8 @@ func (s *Server) Tools() []ToolDef {
 			InputSchema: map[string]interface{}{
 				"type": "object",
 				"properties": map[string]interface{}{
-					"message": map[string]interface{}{"type": "string", "description": "Notification message to display"},
+					"message":      map[string]interface{}{"type": "string", "description": "Notification message to display"},
+					"operation_id": map[string]interface{}{"type": "string", "description": "Operation ID (enables report link in desktop notification)"},
 				},
 				"required": []string{"message"},
 			},
