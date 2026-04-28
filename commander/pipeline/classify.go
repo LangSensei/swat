@@ -61,12 +61,13 @@ func SpawnClassify(rt runtime.RuntimeAdapter, op *operation.Operation) error {
 	return nil
 }
 
-// FinishClassify completes the classify phase after the classifier process has exited.
-// It reloads OPERATION.md, checks the squad assignment, and moves the operation to the squad directory.
-func FinishClassify(op *operation.Operation, notifier notify.Notifier) (*operation.Operation, string, error) {
+// Advance completes classify and transitions an operation from classifying → active.
+// Reloads OPERATION.md to get classifier output, validates squad, moves to squad dir,
+// provisions, and launches the agent.
+func Advance(rt runtime.RuntimeAdapter, op *operation.Operation, notifier notify.Notifier, runtimeName, notifyName string) error {
 	reloaded, err := operation.Load("_unclassified", op.OperationID)
 	if err != nil {
-		return nil, "", fmt.Errorf("reload after classify: %v", err)
+		return fmt.Errorf("reload after classify: %v", err)
 	}
 	log.Printf("[classify] %s: classify result — squad=%q", op.OperationID, reloaded.Squad)
 
@@ -75,7 +76,7 @@ func FinishClassify(op *operation.Operation, notifier notify.Notifier) (*operati
 		if notifier != nil {
 			notifier.Notify(fmt.Sprintf("Task could not be classified — no matching squad found.\n\nOperation: %s\nBrief: %s\n\nInstalled squads:\n%s", op.OperationID, op.Brief, summaries))
 		}
-		return nil, "", fmt.Errorf("classify failed: no squad assigned")
+		return fmt.Errorf("classify failed: no squad assigned")
 	}
 
 	manifestPath := filepath.Join(layout.BlueprintSquadDir(reloaded.Squad), "MANIFEST.md")
@@ -83,18 +84,27 @@ func FinishClassify(op *operation.Operation, notifier notify.Notifier) (*operati
 		if notifier != nil {
 			notifier.Notify(fmt.Sprintf("Task classified to squad '%s' which is not installed.\n\nOperation: %s\nBrief: %s", reloaded.Squad, op.OperationID, op.Brief))
 		}
-		return nil, "", fmt.Errorf("classify assigned unknown squad: %s", reloaded.Squad)
+		return fmt.Errorf("classify assigned unknown squad: %s", reloaded.Squad)
 	}
 
 	destDir := layout.OperationDir(reloaded.Squad, op.OperationID)
 	if err := os.MkdirAll(filepath.Dir(destDir), 0755); err != nil {
-		return nil, "", fmt.Errorf("create squad dir: %v", err)
+		return fmt.Errorf("create squad dir: %v", err)
 	}
 	if err := os.Rename(layout.UnclassifiedOperationDir(op.OperationID), destDir); err != nil {
-		return nil, "", fmt.Errorf("move to squad: %v", err)
+		return fmt.Errorf("move to squad: %v", err)
 	}
 
-	return reloaded, destDir, nil
+	if err := Provision(rt, reloaded, destDir, runtimeName, notifyName); err != nil {
+		return fmt.Errorf("provision: %v", err)
+	}
+
+	if err := LaunchAgent(rt, reloaded, destDir); err != nil {
+		return fmt.Errorf("launch: %v", err)
+	}
+
+	log.Printf("[scan] %s: launched successfully (squad=%s)", reloaded.OperationID, reloaded.Squad)
+	return nil
 }
 
 // buildClassifyPrompt constructs the classifier system prompt.
