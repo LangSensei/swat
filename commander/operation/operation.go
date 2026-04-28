@@ -12,25 +12,25 @@ import (
 
 // Operation represents a task parsed from OPERATION.md frontmatter
 type Operation struct {
-	OperationID   string      `json:"operation_id"`
-	Squad         string      `json:"squad,omitempty"`
-	Status        string      `json:"status"`
-	PID           int         `json:"pid,omitempty"`
-	CreatedAt     time.Time   `json:"created_at"`
-	DispatchedAt  *time.Time  `json:"dispatched_at,omitempty"`
-	CompletedAt   *time.Time  `json:"completed_at,omitempty"`
-	FailedAt      *time.Time  `json:"failed_at,omitempty"`
-	FailureReason *string     `json:"failure_reason,omitempty"`
-	Summary       string      `json:"summary,omitempty"`
-	References    []Reference `json:"references,omitempty"`
-	Brief         string      `json:"brief,omitempty"`
-	Details       string      `json:"details,omitempty"`
+	OperationID   string      `json:"operation_id" yaml:"operation_id"`
+	Squad         string      `json:"squad,omitempty" yaml:"squad"`
+	Status        string      `json:"status" yaml:"status"`
+	PID           int         `json:"pid,omitempty" yaml:"pid"`
+	CreatedAt     time.Time   `json:"created_at" yaml:"created_at"`
+	DispatchedAt  *time.Time  `json:"dispatched_at,omitempty" yaml:"dispatched_at"`
+	CompletedAt   *time.Time  `json:"completed_at,omitempty" yaml:"completed_at"`
+	FailedAt      *time.Time  `json:"failed_at,omitempty" yaml:"failed_at"`
+	FailureReason *string     `json:"failure_reason,omitempty" yaml:"failure_reason"`
+	Summary       string      `json:"summary,omitempty" yaml:"summary"`
+	References    []Reference `json:"references,omitempty" yaml:"references"`
+	Brief         string      `json:"brief,omitempty" yaml:"-"`
+	Details       string      `json:"details,omitempty" yaml:"-"`
 }
 
 // Reference is a typed reference attached to an operation
 type Reference struct {
-	Type  string `json:"type"`
-	Value string `json:"value"`
+	Type  string `json:"type" yaml:"type"`
+	Value string `json:"value" yaml:"value"`
 }
 
 // Create writes a new OPERATION.md from template.
