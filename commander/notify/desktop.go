@@ -39,7 +39,14 @@ func (d *DesktopNotifier) Notify(opID string, message string) error {
 		}
 		safeMessage := html.EscapeString(message)
 		ps := fmt.Sprintf(
-			`[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; `+
+			// Register AUMID so Windows does not silently swallow the toast
+			`$aumid = 'SWAT'; `+
+				`$regPath = "HKCU:\Software\Classes\AppUserModelId\$aumid"; `+
+				`if (-not (Test-Path $regPath)) { `+
+				`New-Item -Path $regPath -Force | Out-Null; `+
+				`New-ItemProperty -Path $regPath -Name DisplayName -Value 'SWAT' -Force | Out-Null }; `+
+				// Load WinRT types and send toast
+				`[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null; `+
 				`[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] > $null; `+
 				`$xml = '<toast%s><visual><binding template="ToastGeneric"><text>SWAT</text><text>%s</text></binding></visual></toast>'; `+
 				`$doc = [Windows.Data.Xml.Dom.XmlDocument]::new(); `+
@@ -49,7 +56,11 @@ func (d *DesktopNotifier) Notify(opID string, message string) error {
 			launchAttr, safeMessage,
 		)
 		encoded := encodeUTF16LEBase64(ps)
-		return exec.Command("powershell", "-NoProfile", "-EncodedCommand", encoded).Run()
+		ps51 := filepath.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+		if os.Getenv("SystemRoot") == "" {
+			ps51 = "powershell"
+		}
+		return exec.Command(ps51, "-NoProfile", "-EncodedCommand", encoded).Run()
 	default:
 		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
