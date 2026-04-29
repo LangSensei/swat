@@ -56,8 +56,9 @@ func (d *DesktopNotifier) Notify(opID string, message string) error {
 			launchAttr, safeMessage,
 		)
 		encoded := encodeUTF16LEBase64(ps)
-		ps51 := filepath.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
-		if os.Getenv("SystemRoot") == "" {
+		sysRoot := os.Getenv("SystemRoot")
+		ps51 := filepath.Join(sysRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+		if sysRoot == "" {
 			ps51 = "powershell"
 		}
 		return exec.Command(ps51, "-NoProfile", "-EncodedCommand", encoded).Run()
