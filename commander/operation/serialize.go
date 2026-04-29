@@ -85,6 +85,9 @@ func formatOptionalStr(s *string) string {
 // parseOperationMD parses an OPERATION.md file into an Operation struct.
 // Frontmatter is parsed with yaml.v3; body (Brief/Details) is extracted with string logic.
 func parseOperationMD(content string) (*Operation, error) {
+	// Normalize CRLF to LF — Windows editors (and some agent tools) may write CRLF.
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+
 	fmStr, body, err := splitFrontmatter(content)
 	if err != nil {
 		return nil, err

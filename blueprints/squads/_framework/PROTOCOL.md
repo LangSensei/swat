@@ -70,6 +70,7 @@ Re-read your working files (as defined by the skill). Confirm all sections are f
 - Set `summary:` in frontmatter (2-3 sentences)
 - Set `completed_at:` timestamp
 - Set `status: completed`
+- **YAML compliance** — frontmatter values must be valid YAML. If a value contains special characters (`: `, ` #`, `{`, `}`, `[`, `]`, `"`, `'`, `,`), wrap it in double quotes: `summary: "Fixed: auth token refresh"`
 
 ### 3. Generate report.html
 
